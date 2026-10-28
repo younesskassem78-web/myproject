@@ -19,11 +19,19 @@ describe('Login', () => {
   }
 
   it('shows an error for wrong credentials', async () => {
-    auth.login.mockReturnValue(throwError(() => ({ status: 401 })));
+    auth.login.mockReturnValue(throwError(() => ({ status: 401, error: { detail: 'Invalid email or password' } })));
     const fixture = setup();
     fixture.componentInstance.submit();
     await fixture.whenStable();
     expect(fixture.nativeElement.textContent).toContain('Invalid email or password');
+  });
+
+  it('explains a pending application', async () => {
+    auth.login.mockReturnValue(throwError(() => ({ status: 403, error: { detail: 'Your application is waiting for approval' } })));
+    const fixture = setup();
+    fixture.componentInstance.submit();
+    await fixture.whenStable();
+    expect(fixture.nativeElement.textContent).toContain('Your application is waiting for approval');
   });
 
   it('disables the button while signing in', async () => {

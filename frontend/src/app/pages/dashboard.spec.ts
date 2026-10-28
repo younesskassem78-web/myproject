@@ -5,8 +5,8 @@ import { Me, Usage } from '../core/models';
 import { Dashboard } from './dashboard';
 
 const me: Me = {
-  name: 'Demo User', email: 'demo@myterra.app', balance: 5,
-  plan: { id: 'fiber50', name: 'Fiber 50 GB', data_gb: 50, price: 20 },
+  id: 'u1', role: 'customer', name: 'Demo User', email: 'demo@myterra.app', balance: 5,
+  plan: { id: 'p1', name: 'Fiber 50 GB', data_gb: 50, price: 20, active: true },
 };
 const usage: Usage = { month: '2026-10', limit_gb: 50, used_gb: 3.5, days: [{ day: 1, gb: 1.5 }, { day: 2, gb: 2 }] };
 

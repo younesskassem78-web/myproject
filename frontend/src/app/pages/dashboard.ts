@@ -14,7 +14,7 @@ import { UsageChart } from './usage-chart';
       <p class="error" role="alert">{{ loadError() }}</p>
     } @else if (me() && usage()) {
       <section class="usage-hero">
-        <p class="plan-line">{{ me()!.plan.name }} &nbsp;/&nbsp; {{ me()!.plan.price | currency: 'USD' : 'symbol' : '1.0-2' }}/month</p>
+        <p class="plan-line">{{ me()!.plan?.name }} &nbsp;/&nbsp; {{ me()!.plan?.price | currency: 'USD' : 'symbol' : '1.0-2' }}/month</p>
         <h1>{{ usage()!.used_gb | number: '1.2-2' }} GB of {{ usage()!.limit_gb }} GB used</h1>
         <div class="fiber" role="progressbar" aria-label="Data used this month"
              [attr.aria-valuenow]="percent()" aria-valuemin="0" aria-valuemax="100">

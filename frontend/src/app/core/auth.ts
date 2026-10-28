@@ -19,3 +19,13 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
 
 export const authGuard: CanActivateFn = () =>
   inject(AuthService).isLoggedIn() || inject(Router).parseUrl('/login');
+
+// UI only: the backend checks the admin role on every admin request.
+export const adminGuard: CanActivateFn = () =>
+  inject(AuthService).isAdmin() || inject(Router).parseUrl('/login');
+
+export const customerGuard: CanActivateFn = () => {
+  const auth = inject(AuthService);
+  if (!auth.isLoggedIn()) return inject(Router).parseUrl('/login');
+  return !auth.isAdmin() || inject(Router).parseUrl('/admin');
+};

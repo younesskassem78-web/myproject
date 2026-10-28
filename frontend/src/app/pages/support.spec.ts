@@ -4,8 +4,8 @@ import { ApiService } from '../core/api.service';
 import { Ticket } from '../core/models';
 import { Support } from './support';
 
-const old: Ticket = { id: 1, subject: 'Slow evenings', message: 'x', status: 'resolved', created_at: '2026-10-03T19:42:00' };
-const fresh: Ticket = { id: 2, subject: 'Router light is red', message: 'y', status: 'open', created_at: '2026-10-29T10:00:00' };
+const old: Ticket = { id: 't1', subject: 'Slow evenings', message: 'x', status: 'resolved', created_at: '2026-10-03T19:42:00' };
+const fresh: Ticket = { id: 't2', subject: 'Router light is red', message: 'y', status: 'open', created_at: '2026-10-29T10:00:00' };
 
 describe('Support', () => {
   let api: { tickets: any; createTicket: any };
@@ -42,7 +42,7 @@ describe('Support', () => {
     c.send();
     await fixture.whenStable();
     expect(api.createTicket).toHaveBeenCalledWith('Router light is red', 'y');
-    expect(c.tickets()[0].id).toBe(2);
+    expect(c.tickets()[0].id).toBe('t2');
     expect(c.subject).toBe('');
     expect(fixture.nativeElement.textContent).toContain('Open');
   });

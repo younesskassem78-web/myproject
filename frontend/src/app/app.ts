@@ -8,10 +8,14 @@ import { AuthService } from './core/auth.service';
   template: `
     @if (auth.name()) {
       <header class="topbar">
-        <a class="wordmark" routerLink="/dashboard">myterra</a>
+        <a class="wordmark" [routerLink]="auth.role() === 'admin' ? '/admin' : '/dashboard'">myterra</a>
         <nav>
-          <a routerLink="/dashboard" routerLinkActive="active">Overview</a>
-          <a routerLink="/support" routerLinkActive="active">Support</a>
+          @if (auth.role() === 'admin') {
+            <a routerLink="/admin" routerLinkActive="active">Admin</a>
+          } @else {
+            <a routerLink="/dashboard" routerLinkActive="active">Overview</a>
+            <a routerLink="/support" routerLinkActive="active">Support</a>
+          }
         </nav>
         <button class="link-btn" type="button" (click)="auth.logout()">Sign out</button>
       </header>
