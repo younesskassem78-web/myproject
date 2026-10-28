@@ -16,7 +16,7 @@ describe('Admin', () => {
       adminUsers: vi.fn(() => of([user])),
       adminPlans: vi.fn(() => of([])),
       adminTickets: vi.fn(() => of([])),
-      approve: vi.fn(() => of({ user_id: 'u2' })),
+      approve: vi.fn(() => of({ user_id: 'u2', email_sent: true })),
       deleteUser: vi.fn(() => of(null)),
       updateUser: vi.fn(() => of(user)),
     };
@@ -38,7 +38,7 @@ describe('Admin', () => {
     await fixture.whenStable();
     expect(api['approve']).toHaveBeenCalledWith('a1');
     expect(api['adminApplications']).toHaveBeenCalledTimes(2);
-    expect(fixture.nativeElement.textContent).toContain('Approved Ali');
+    expect(fixture.nativeElement.textContent).toContain('Approved Ali. We emailed them');
   });
 
   it('asks before deleting a user', async () => {

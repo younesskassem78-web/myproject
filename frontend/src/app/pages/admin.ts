@@ -1,4 +1,4 @@
-import { DatePipe } from '@angular/common';
+import { CurrencyPipe, DatePipe } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Observable, forkJoin } from 'rxjs';
@@ -10,7 +10,7 @@ type Tab = 'applications' | 'users' | 'plans' | 'tickets';
 
 @Component({
   selector: 'app-admin',
-  imports: [FormsModule, DatePipe],
+  imports: [FormsModule, DatePipe, CurrencyPipe],
   template: `
     <h1>Admin</h1>
     <div class="tabs" role="tablist">
@@ -29,11 +29,30 @@ type Tab = 'applications' | 'users' | 'plans' | 'tickets';
       @case ('applications') {
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Name</th><th>Email</th><th>Plan</th><th>Sent</th><th>Status</th><th></th></tr></thead>
+            <thead><tr><th>Applicant</th><th>Home and installation</th><th>Plan and payment</th><th>Sent</th><th>Status</th><th></th></tr></thead>
             <tbody>
               @for (a of applications(); track a.id) {
                 <tr>
-                  <td>{{ a.name }}</td><td>{{ a.email }}</td><td>{{ a.plan_name }}</td>
+                  <td>
+                    <strong>{{ a.name }}</strong><br />
+                    <span class="muted">{{ a.email }}</span><br />
+                    <span class="muted">{{ a.phone }}</span>
+                    @if (a.birth_date) {
+                      <br /><span class="muted">Born {{ a.birth_date | date: 'd MMM y' }}, ID {{ a.id_number }}</span>
+                    }
+                  </td>
+                  <td>
+                    @if (a.city) {
+                      {{ a.street }}@if (a.apartment) {, {{ a.apartment }}}<br />{{ a.city }}<br />
+                      <span class="muted">Install {{ a.install_date | date: 'EEE d MMM' }}</span>
+                    }
+                  </td>
+                  <td>
+                    {{ a.plan_name }}
+                    @if (a.card_last4) {
+                      <br /><span class="muted">Paid {{ a.amount_paid | currency }}, {{ a.card_brand }} ending {{ a.card_last4 }}</span>
+                    }
+                  </td>
                   <td>{{ a.created_at | date: 'd MMM, HH:mm' }}</td>
                   <td><span class="status status-{{ a.status }}">{{ label(a.status) }}</span></td>
                   <td class="actions">
@@ -76,7 +95,8 @@ type Tab = 'applications' | 'users' | 'plans' | 'tickets';
             <tbody>
               @for (u of users(); track u.id) {
                 <tr [class.inactive]="!u.active">
-                  <td><strong>{{ u.name }}</strong><br /><span class="muted">{{ u.email }}</span></td>
+                  <td><strong>{{ u.name }}</strong><br /><span class="muted">{{ u.email }}</span>
+                    @if (u.phone) { <br /><span class="muted">{{ u.phone }}</span> }</td>
                   <td>
                     <select [attr.aria-label]="'Role for ' + u.email" [ngModel]="u.role" (ngModelChange)="setRole(u, $event)"
                             [disabled]="u.id === myId()">
@@ -217,7 +237,18 @@ export class Admin implements OnInit {
     });
   }
 
-  approve(a: Application) { this.run(this.api.approve(a.id), `Approved ${a.name}. They can sign in now.`); }
+  approve(a: Application) {
+    this.error.set('');
+    this.notice.set('');
+    this.api.approve(a.id).subscribe({
+      next: r => {
+        this.notice.set(r.email_sent ? `Approved ${a.name}. We emailed them a sign-in link.`
+          : `Approved ${a.name}, but the email didn't send. Let them know they can sign in.`);
+        this.load();
+      },
+      error: e => { this.error.set(errorText(e)); this.load(); },
+    });
+  }
   reject(a: Application) { this.run(this.api.reject(a.id), `Rejected ${a.name}'s application.`); }
 
   createUser() {

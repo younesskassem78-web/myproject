@@ -27,6 +27,37 @@ TEST_DATABASE_URL=postgresql://postgres:<password>@localhost:5433/myterra_test
 
 On first start the backend creates the tables and adds the demo data.
 
+### Email and SMS (optional)
+
+Without these settings MyTerra runs in **demo mode**: verification codes and emails are printed in the backend window instead of being sent. To send for real, add these lines to `backend/.env` and restart the backend.
+
+**Email through Gmail** (free, about 500 emails a day):
+1. Turn on 2-Step Verification for your Google account.
+2. Open https://myaccount.google.com/apppasswords, create an app password named "MyTerra" and copy the 16 letters.
+3. Add:
+   ```
+   GMAIL_USER=you@gmail.com
+   GMAIL_APP_PASSWORD=abcd efgh ijkl mnop
+   ```
+
+**SMS through a Twilio trial** (free credit; only sends to numbers you verify in Twilio):
+1. Sign up at https://www.twilio.com/try-twilio and verify your own mobile number.
+2. In the Twilio console, get a trial phone number, and copy the Account SID and Auth Token.
+3. Add:
+   ```
+   TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+   TWILIO_AUTH_TOKEN=your_auth_token
+   TWILIO_FROM=+1xxxxxxxxxx
+   ```
+
+## Applying
+
+The apply page asks for name, email and mobile number (each confirmed with a 6-digit code), password, date of birth (18+), ID number, address, preferred installation date, plan and a first-month card payment.
+
+The payment is fake: nothing is charged, and only the card type and last 4 digits are stored. Use `4242 4242 4242 4242` with any future expiry. `4000 0000 0000 0002` is always declined.
+
+Emails go out when an application is received, approved (with a sign-in link, never the password) and rejected (with a refund note).
+
 ### 2. Backend (port 8001)
 
 ```bash

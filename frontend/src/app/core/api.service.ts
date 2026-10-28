@@ -12,8 +12,12 @@ export class ApiService {
     return this.http.post<{ token: string; name: string; role: Role }>(`${API}/login`, { email, password });
   }
   plans() { return this.http.get<Plan[]>(`${API}/plans`); }
-  apply(body: { name: string; email: string; password: string; plan_id: string }) {
-    return this.http.post<{ id: string; status: string }>(`${API}/apply`, body);
+  apply(body: object) { return this.http.post<{ id: string; status: string }>(`${API}/apply`, body); }
+  sendCode(channel: 'email' | 'sms', target: string) {
+    return this.http.post<{ sent: boolean }>(`${API}/verify/send`, { channel, target });
+  }
+  checkCode(channel: 'email' | 'sms', target: string, code: string) {
+    return this.http.post<{ verification_id: string }>(`${API}/verify/check`, { channel, target, code });
   }
 
   me() { return this.http.get<Me>(`${API}/me`); }
@@ -25,7 +29,7 @@ export class ApiService {
   }
 
   adminApplications() { return this.http.get<Application[]>(`${API}/admin/applications`); }
-  approve(id: string) { return this.http.post<{ user_id: string }>(`${API}/admin/applications/${id}/approve`, {}); }
+  approve(id: string) { return this.http.post<{ user_id: string; email_sent: boolean }>(`${API}/admin/applications/${id}/approve`, {}); }
   reject(id: string) { return this.http.post(`${API}/admin/applications/${id}/reject`, {}); }
   adminUsers() { return this.http.get<AdminUser[]>(`${API}/admin/users`); }
   createUser(body: object) { return this.http.post(`${API}/admin/users`, body); }

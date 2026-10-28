@@ -7,11 +7,14 @@ export type TicketStatus = 'open' | 'in_progress' | 'resolved';
 export interface Ticket { id: string; subject: string; message: string; status: TicketStatus; created_at: string; }
 
 export interface Application {
-  id: string; name: string; email: string; plan_name: string;
+  id: string; name: string; email: string; phone: string | null; plan_name: string;
+  birth_date: string | null; id_number: string | null; city: string | null; street: string | null; apartment: string | null;
+  install_date: string | null; card_brand: string | null; card_last4: string | null; amount_paid: number | null;
   status: 'pending' | 'approved' | 'rejected'; created_at: string;
 }
 export interface AdminUser {
-  id: string; name: string; email: string; role: Role; plan_id: string | null; plan_name: string | null;
+  id: string; name: string; email: string; phone: string | null; address: string | null;
+  role: Role; plan_id: string | null; plan_name: string | null;
   balance: number; active: boolean; created_at: string;
 }
 export interface AdminPlan extends Plan { users: number; }

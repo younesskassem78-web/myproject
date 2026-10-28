@@ -172,3 +172,30 @@ select { font: inherit; color: var(--ink); background: var(--surface); border: 1
 .page:has(app-admin) { max-width: 1320px; }
 td select { min-width: 0; }
 .login-brand a.wordmark { text-decoration: none; }
+
+/* Apply (full form) */
+.apply { min-height: 100vh; }
+.apply-head { display: flex; justify-content: space-between; align-items: center; padding: 1.25rem clamp(1rem, 4vw, 3rem); background: var(--pine-deep); }
+.apply-head .wordmark { font-size: 1.5rem; font-weight: 800; color: var(--amber); text-decoration: none; }
+.apply-head a:last-child { color: #e6f1ee; font-weight: 600; }
+.apply-form, .apply-done { max-width: 44rem; margin: 0 auto; padding: clamp(1.5rem, 4vw, 3rem) clamp(1rem, 4vw, 2rem) 4rem; }
+.apply-done { display: grid; gap: 1rem; justify-items: start; }
+.apply-done .btn { text-decoration: none; }
+.apply-form > h1 { margin-bottom: 0.25rem; }
+.apply-form fieldset { border: 0; margin: 0; padding: 1.5rem; background: var(--surface); border-radius: 20px; display: grid; gap: 1rem; }
+.apply-form legend { float: left; width: 100%; font: 700 1.25rem var(--display); display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.25rem; }
+.step { display: inline-grid; place-items: center; width: 1.75rem; height: 1.75rem; border-radius: 50%; background: var(--amber); color: var(--ink); font-size: 0.9375rem; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.hint { font-size: 0.875rem; color: var(--muted); font-weight: 400; }
+.optional { font-weight: 400; color: var(--muted); }
+.verify { display: grid; gap: 0.5rem; }
+.verify-row { display: flex; gap: 0.5rem; align-items: center; }
+.verify-row input { flex: 1; }
+.verify-row .btn { white-space: nowrap; }
+.verified { color: var(--pine); font-weight: 700; white-space: nowrap; padding: 0 0.5rem; }
+.verified::before { content: '✓ '; }
+.apply-form .plans { display: grid; gap: 0.5rem; }
+.card-box { display: grid; gap: 1rem; padding: 1rem; border: 1.5px dashed var(--line); border-radius: 12px; }
+.check { display: flex; gap: 0.75rem; align-items: flex-start; font-weight: 400; }
+.check input { width: auto; margin-top: 0.3rem; accent-color: var(--pine); }
+@media (max-width: 600px) { .two { grid-template-columns: 1fr; } }
