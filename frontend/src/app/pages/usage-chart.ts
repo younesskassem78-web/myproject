@@ -3,6 +3,7 @@ import { BarController, BarElement, CategoryScale, Chart, LinearScale, Tooltip }
 import { UsageDay } from '../core/models';
 
 Chart.register(BarController, BarElement, CategoryScale, LinearScale, Tooltip);
+Chart.defaults.font.family = "'Source Sans 3', system-ui, sans-serif";
 
 @Component({
   selector: 'app-usage-chart',
