@@ -58,6 +58,31 @@ create table if not exists tickets (
   status text not null default 'open' check (status in ('open', 'in_progress', 'resolved')),
   created_at timestamptz not null default now()
 );
+create table if not exists verifications (
+  id uuid primary key default gen_random_uuid(),
+  channel text not null check (channel in ('email', 'sms')),
+  target text not null,
+  code_hash text not null,
+  attempts int not null default 0,
+  created_at timestamptz not null default now(),
+  expires_at timestamptz not null,
+  verified_at timestamptz,
+  used_at timestamptz
+);
+create index if not exists verifications_target on verifications (channel, target, created_at desc);
+-- columns added after the first release; "if not exists" keeps existing databases working
+alter table users add column if not exists phone text;
+alter table users add column if not exists address text;
+alter table applications add column if not exists phone text;
+alter table applications add column if not exists birth_date date;
+alter table applications add column if not exists id_number text;
+alter table applications add column if not exists city text;
+alter table applications add column if not exists street text;
+alter table applications add column if not exists apartment text;
+alter table applications add column if not exists install_date date;
+alter table applications add column if not exists card_brand text;
+alter table applications add column if not exists card_last4 text;
+alter table applications add column if not exists amount_paid numeric(8,2);
 """
 
 
@@ -90,7 +115,7 @@ def init(reset: bool = False) -> None:
     """Create tables and add demo data to an empty database."""
     with connect() as c:
         if reset:
-            c.execute("drop table if exists tickets, tokens, applications, users, plans cascade")
+            c.execute("drop table if exists verifications, tickets, tokens, applications, users, plans cascade")
         c.execute(SCHEMA)
         if c.execute("select 1 from plans limit 1").fetchone():
             return
