@@ -2,6 +2,8 @@ from datetime import date
 
 import pytest
 
+CARD = {"holder": "Demo User", "number": "4242424242424242", "expiry": "12/30", "cvc": "123"}
+
 
 def test_me(client, auth_headers):
     me = client.get("/api/me", headers=auth_headers(client)).json()
@@ -23,16 +25,16 @@ def test_usage(client, auth_headers):
 
 def test_topup_adds_to_balance(client, auth_headers):
     h = auth_headers(client)
-    assert client.post("/api/topup", json={"amount": 10}, headers=h).json() == {"balance": 15.0}
+    assert client.post("/api/topup", json={"amount": 10, "card": CARD}, headers=h).json() == {"balance": 15.0}
     assert client.get("/api/me", headers=h).json()["balance"] == 15.0
 
 
 @pytest.mark.parametrize("amount", [0, -5, 500.01, "abc", None])
 def test_topup_rejects_bad_amounts(client, auth_headers, amount):
     h = auth_headers(client)
-    assert client.post("/api/topup", json={"amount": amount}, headers=h).status_code == 422
+    assert client.post("/api/topup", json={"amount": amount, "card": CARD}, headers=h).status_code == 422
     assert client.get("/api/me", headers=h).json()["balance"] == 5.0
 
 
 def test_topup_max_is_allowed(client, auth_headers):
-    assert client.post("/api/topup", json={"amount": 500}, headers=auth_headers(client)).status_code == 200
+    assert client.post("/api/topup", json={"amount": 500, "card": CARD}, headers=auth_headers(client)).status_code == 200

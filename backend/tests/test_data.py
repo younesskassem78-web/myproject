@@ -34,4 +34,4 @@ def test_health(client):
 
 def test_public_plans(client):
     names = {p["name"] for p in client.get("/api/plans").json()}
-    assert names == {"Fiber 50 GB", "Fiber 100 GB"}
+    assert names == {"Fiber 50 GB", "Fiber 100 GB", "Fiber Unlimited"}

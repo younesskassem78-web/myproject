@@ -6,12 +6,13 @@ from datetime import date, datetime, timedelta, timezone
 from typing import Annotated, Literal
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Header, HTTPException, Response
 from psycopg import errors
-from pydantic import BaseModel, BeforeValidator, StringConstraints, field_validator, model_validator
+from pydantic import BaseModel, StringConstraints, field_validator, model_validator
 
 from app import db, notify
-from app.deps import (send_email_quietly, DB, PLAN_COLS, Email, Password, Text, log)
+from app.deps import (DB, DECLINED_TEST_CARD, PLAN_COLS, Card, Email, Password, Phone, Text, log,
+                      send_email_quietly)
 
 router = APIRouter()
 
@@ -20,45 +21,6 @@ router = APIRouter()
 class Login(BaseModel):
     email: str
     password: str
-
-
-def _strip(chars: str):
-    return BeforeValidator(lambda v: re.sub(f"[{chars}]", "", v) if isinstance(v, str) else v)
-
-
-Phone = Annotated[str, _strip(r"\s\-()"), StringConstraints(pattern=r"^\+[1-9]\d{7,14}$")]
-
-
-def luhn_ok(number: str) -> bool:
-    digits = [int(d) for d in reversed(number)]
-    return sum(digits[0::2] + [sum(divmod(2 * d, 10)) for d in digits[1::2]]) % 10 == 0
-
-
-class Card(BaseModel):
-    holder: Text(100)
-    number: Annotated[str, _strip(r"\s\-"), StringConstraints(pattern=r"^\d{13,19}$")]
-    expiry: Annotated[str, StringConstraints(strip_whitespace=True, pattern=r"^(0[1-9]|1[0-2])/\d{2}$")]
-    cvc: Annotated[str, StringConstraints(pattern=r"^\d{3,4}$")]
-
-    @model_validator(mode="after")
-    def check(self):
-        if not luhn_ok(self.number):
-            raise ValueError("Card number is not valid")
-        month, year = map(int, self.expiry.split("/"))
-        if (2000 + year, month) < (date.today().year, date.today().month):
-            raise ValueError("Card has expired")
-        return self
-
-    def brand(self) -> str:
-        n = self.number
-        if n[0] == "4":
-            return "Visa"
-        if 51 <= int(n[:2]) <= 55 or 2221 <= int(n[:4]) <= 2720:
-            return "Mastercard"
-        return "Amex" if n[:2] in ("34", "37") else "Card"
-
-
-DECLINED_TEST_CARD = "4000000000000002"
 
 
 class Apply(BaseModel):
@@ -136,14 +98,23 @@ def plans(conn: DB):
     return conn.execute(f"select {PLAN_COLS} from plans where active order by price").fetchall()
 
 
+LOCK_AFTER = 5  # wrong passwords within 15 minutes
+
+
 @router.post("/api/login")
 def login(body: Login, conn: DB):
     email = body.email.strip().lower()
+    fails = conn.execute("select count(*)::int as n from login_failures where email = %s "
+                         "and created_at > now() - interval '15 minutes'", (email,)).fetchone()["n"]
+    if fails >= LOCK_AFTER:
+        raise HTTPException(429, "Too many wrong passwords. Try again in 15 minutes or reset your password.")
     user = conn.execute("select id, name, role, active, password_hash from users where email = %s", (email,)).fetchone()
     if user and db.verify_password(body.password, user["password_hash"]):
         if not user["active"]:
             raise HTTPException(403, "Your account is deactivated. Contact support.")
         token = secrets.token_urlsafe(32)
+        conn.execute("delete from login_failures where email = %s", (email,))
+        conn.execute("delete from tokens where expires_at < now()")  # tidy up old sessions
         conn.execute("insert into tokens (token, user_id) values (%s, %s)", (token, user["id"]))
         return {"token": token, "name": user["name"], "role": user["role"]}
     application = conn.execute("select status, password_hash from applications where email = %s "
@@ -153,50 +124,107 @@ def login(body: Login, conn: DB):
             raise HTTPException(403, "Your application is waiting for approval")
         if application["status"] == "rejected":
             raise HTTPException(403, "Your application was not approved")
+    conn.execute("insert into login_failures (email) values (%s)", (email,))
     raise HTTPException(401, "Invalid email or password")
+
+
+@router.post("/api/logout", status_code=204)
+def logout(conn: DB, authorization: str | None = Header(None)):
+    conn.execute("delete from tokens where token = %s", ((authorization or "").removeprefix("Bearer "),))
+    return Response(status_code=204)
+
+
+def _issue_code(conn, channel: str, target: str, send) -> None:
+    """Create a 6-digit code for `target` and deliver it with `send(text)`."""
+    if conn.execute("select 1 from verifications where channel = %s and target = %s and verified_at is null "
+                    "and created_at > now() - interval '60 seconds'", (channel, target)).fetchone():
+        raise HTTPException(429, "Wait a minute before asking for another code")
+    code = f"{secrets.randbelow(10**6):06d}"
+    vid = conn.execute("insert into verifications (channel, target, code_hash, expires_at) "
+                       "values (%s, %s, '', now() + interval '10 minutes') returning id", (channel, target)).fetchone()["id"]
+    conn.execute("update verifications set code_hash = %s where id = %s", (_code_hash(vid, code), vid))
+    try:
+        send(f"Your MyTerra code is {code}. It expires in 10 minutes.")
+    except Exception:
+        log.exception("Sending %s code to %s failed", channel, target)
+        conn.execute("delete from verifications where id = %s", (vid,))
+        what = "email" if channel == "email" else "SMS"
+        raise HTTPException(502, f"We couldn't send the {what}. Check it and try again.")
+
+
+def _check_code(conn, channel: str, target: str, code: str) -> UUID:
+    row = conn.execute("select * from verifications where channel = %s and target = %s and used_at is null "
+                       "order by created_at desc limit 1", (channel, target)).fetchone()
+    if not row:
+        raise HTTPException(400, "Ask for a code first")
+    if row["verified_at"]:
+        return row["id"]
+    if row["attempts"] >= 5:
+        raise HTTPException(400, "Too many wrong tries. Ask for a new code.")
+    if row["expires_at"] < datetime.now(timezone.utc):
+        raise HTTPException(400, "This code has expired. Ask for a new code.")
+    if not hmac.compare_digest(row["code_hash"], _code_hash(row["id"], code)):
+        conn.execute("update verifications set attempts = attempts + 1 where id = %s", (row["id"],))
+        raise HTTPException(400, "Wrong code")
+    conn.execute("update verifications set verified_at = now() where id = %s", (row["id"],))
+    return row["id"]
 
 
 @router.post("/api/verify/send")
 def verify_send(body: VerifySend, conn: DB):
-    if conn.execute("select 1 from verifications where channel = %s and target = %s and verified_at is null "
-                    "and created_at > now() - interval '60 seconds'", (body.channel, body.target)).fetchone():
-        raise HTTPException(429, "Wait a minute before asking for another code")
-    code = f"{secrets.randbelow(10**6):06d}"
-    vid = conn.execute("insert into verifications (channel, target, code_hash, expires_at) "
-                       "values (%s, %s, '', now() + interval '10 minutes') returning id",
-                       (body.channel, body.target)).fetchone()["id"]
-    conn.execute("update verifications set code_hash = %s where id = %s", (_code_hash(vid, code), vid))
-    text = f"Your MyTerra code is {code}. It expires in 10 minutes."
-    try:
-        if body.channel == "email":
-            notify.send_email(body.target, "Your MyTerra verification code", text)
-        else:
-            notify.send_sms(body.target, text)
-    except Exception:
-        log.exception("Sending %s code to %s failed", body.channel, body.target)
-        conn.execute("delete from verifications where id = %s", (vid,))
-        what = "email" if body.channel == "email" else "SMS"
-        raise HTTPException(502, f"We couldn't send the {what}. Check it and try again.")
+    if body.channel == "email":
+        _issue_code(conn, "email", body.target,
+                    lambda text: notify.send_email(body.target, "Your MyTerra verification code", text))
+    else:
+        _issue_code(conn, "sms", body.target, lambda text: notify.send_sms(body.target, text))
     return {"sent": True}
 
 
 @router.post("/api/verify/check")
 def verify_check(body: VerifyCheck, conn: DB):
-    row = conn.execute("select * from verifications where channel = %s and target = %s and used_at is null "
-                       "order by created_at desc limit 1", (body.channel, body.target)).fetchone()
-    if not row:
-        raise HTTPException(400, "Ask for a code first")
-    if row["verified_at"]:
-        return {"verification_id": str(row["id"])}
-    if row["attempts"] >= 5:
-        raise HTTPException(400, "Too many wrong tries. Ask for a new code.")
-    if row["expires_at"] < datetime.now(timezone.utc):
-        raise HTTPException(400, "This code has expired. Ask for a new code.")
-    if not hmac.compare_digest(row["code_hash"], _code_hash(row["id"], body.code)):
-        conn.execute("update verifications set attempts = attempts + 1 where id = %s", (row["id"],))
-        raise HTTPException(400, "Wrong code")
-    conn.execute("update verifications set verified_at = now() where id = %s", (row["id"],))
-    return {"verification_id": str(row["id"])}
+    return {"verification_id": str(_check_code(conn, body.channel, body.target, body.code))}
+
+
+class Forgot(BaseModel):
+    email: Email
+
+
+class Reset(Forgot):
+    code: Annotated[str, StringConstraints(strip_whitespace=True, pattern=r"^\d{6}$")]
+    password: Password
+
+
+# Reset codes live beside signup codes but under their own target, so one can never stand in for the other.
+def _reset_target(email: str) -> str:
+    return f"reset:{email}"
+
+
+@router.post("/api/password/forgot")
+def forgot(body: Forgot, conn: DB):
+    # Same answer whether or not the account exists, so this can't be used to discover customers.
+    if conn.execute("select 1 from users where email = %s and active", (body.email,)).fetchone():
+        try:
+            _issue_code(conn, "email", _reset_target(body.email),
+                        lambda text: notify.send_email(body.email, "Reset your MyTerra password", text))
+        except HTTPException as e:
+            if e.status_code != 429:
+                raise
+    return {"sent": True}
+
+
+@router.post("/api/password/reset")
+def reset(body: Reset, conn: DB):
+    target = _reset_target(body.email)
+    with conn.transaction():
+        vid = _check_code(conn, "email", target, body.code)
+        user = conn.execute("update users set password_hash = %s where email = %s returning id",
+                            (db.hash_password(body.password), body.email)).fetchone()
+        if not user:
+            raise HTTPException(400, "Ask for a code first")
+        conn.execute("update verifications set used_at = now() where id = %s", (vid,))
+        conn.execute("delete from tokens where user_id = %s", (user["id"],))
+        conn.execute("delete from login_failures where email = %s", (body.email,))
+    return {"reset": True}
 
 
 def _use_verification(conn, vid: UUID, channel: str, target: str) -> None:
