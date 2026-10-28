@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { Subject, of } from 'rxjs';
+import { of } from 'rxjs';
 import { ApiService } from '../core/api.service';
 import { Me, Usage } from '../core/models';
 import { Dashboard } from './dashboard';
@@ -29,10 +29,14 @@ describe('Dashboard', () => {
     expect(text).toContain('3.50 GB of 50 GB used');
   });
 
-  it('tops up the balance', async () => {
+  it('opens the card window, then shows the new balance', async () => {
     const fixture = await setup();
-    fixture.componentInstance.amount = '10';
-    fixture.componentInstance.topUp();
+    const c = fixture.componentInstance;
+    c.amount = '10';
+    c.topUp();
+    await fixture.whenStable();
+    expect(fixture.nativeElement.querySelector('dialog').open).toBe(true);
+    c.payTopUp().subscribe(r => c.onTopUpPaid(r));
     await fixture.whenStable();
     expect(api.topUp).toHaveBeenCalledWith(10);
     expect(fixture.nativeElement.textContent).toContain('$15.00');
@@ -48,13 +52,4 @@ describe('Dashboard', () => {
       expect(fixture.nativeElement.textContent).toContain('Enter an amount between 1 and 500');
     });
   }
-
-  it('ignores a second click while topping up', async () => {
-    const fixture = await setup();
-    api.topUp.mockReturnValue(new Subject());
-    fixture.componentInstance.amount = '10';
-    fixture.componentInstance.topUp();
-    fixture.componentInstance.topUp();
-    expect(api.topUp).toHaveBeenCalledTimes(1);
-  });
 });

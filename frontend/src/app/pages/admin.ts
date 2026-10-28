@@ -85,7 +85,7 @@ type Tab = 'applications' | 'users' | 'plans' | 'tickets';
               @for (p of plans(); track p.id) { <option [value]="p.id">{{ p.name }}</option> }
             </select>
           </label>
-          <label>Balance ($) <input name="balance" type="number" min="0" [(ngModel)]="newUser.balance" /></label>
+          <label>Balance ($) <input name="balance" inputmode="decimal" [(ngModel)]="newUser.balance" /></label>
           <button class="btn btn-sm" type="submit">Add user</button>
         </form>
 
@@ -110,7 +110,7 @@ type Tab = 'applications' | 'users' | 'plans' | 'tickets';
                     </select>
                   </td>
                   <td>
-                    <input class="num" type="number" min="0" [attr.aria-label]="'Balance for ' + u.email"
+                    <input class="num" inputmode="decimal" [attr.aria-label]="'Balance for ' + u.email"
                            [(ngModel)]="u.balance" (change)="saveBalance(u)" />
                   </td>
                   <td>{{ u.active ? 'Active' : 'Deactivated' }}</td>
@@ -134,8 +134,8 @@ type Tab = 'applications' | 'users' | 'plans' | 'tickets';
         <form class="inline-form" (ngSubmit)="createPlan()">
           <h2>Add a plan</h2>
           <label>Name <input name="pname" placeholder="Fiber 200 GB" [(ngModel)]="newPlan.name" /></label>
-          <label>Data (GB) <input name="pgb" type="number" min="1" [(ngModel)]="newPlan.data_gb" /></label>
-          <label>Price ($/month) <input name="pprice" type="number" min="0" [(ngModel)]="newPlan.price" /></label>
+          <label>Data (GB) <input name="pgb" inputmode="numeric" [(ngModel)]="newPlan.data_gb" /></label>
+          <label>Price ($/month) <input name="pprice" inputmode="decimal" [(ngModel)]="newPlan.price" /></label>
           <button class="btn btn-sm" type="submit">Add plan</button>
         </form>
 
@@ -146,8 +146,8 @@ type Tab = 'applications' | 'users' | 'plans' | 'tickets';
               @for (p of plans(); track p.id) {
                 <tr [class.inactive]="!p.active">
                   <td><input [attr.aria-label]="'Name of ' + p.name" [(ngModel)]="p.name" /></td>
-                  <td><input class="num" type="number" min="1" [attr.aria-label]="'Data for ' + p.name" [(ngModel)]="p.data_gb" /></td>
-                  <td><input class="num" type="number" min="0" [attr.aria-label]="'Price for ' + p.name" [(ngModel)]="p.price" /></td>
+                  <td><input class="num" inputmode="numeric" [attr.aria-label]="'Data for ' + p.name" [(ngModel)]="p.data_gb" /></td>
+                  <td><input class="num" inputmode="decimal" [attr.aria-label]="'Price for ' + p.name" [(ngModel)]="p.price" /></td>
                   <td>{{ p.users }}</td>
                   <td>{{ p.active ? 'On sale' : 'Hidden' }}</td>
                   <td class="actions">

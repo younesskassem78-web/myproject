@@ -1,10 +1,11 @@
 import { CurrencyPipe } from '@angular/common';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { ApiService } from '../core/api.service';
 import { errorText } from '../core/errors';
 import { Plan } from '../core/models';
+import { CardDetails, PayDialog } from './pay-dialog';
 import { VerifyField } from './verify-field';
 
 const day = (offset: number, years = 0) => {
@@ -16,7 +17,7 @@ const day = (offset: number, years = 0) => {
 
 @Component({
   selector: 'app-apply',
-  imports: [FormsModule, RouterLink, CurrencyPipe, VerifyField],
+  imports: [FormsModule, RouterLink, CurrencyPipe, VerifyField, PayDialog],
   template: `
     <div class="apply">
       <header class="apply-head">
@@ -79,22 +80,7 @@ const day = (offset: number, years = 0) => {
                 </label>
               }
             </div>
-            <div class="card-box">
-              <label>Name on card <input name="holder" autocomplete="cc-name" [(ngModel)]="form.card.holder" /></label>
-              <label>Card number
-                <input name="ccnum" inputmode="numeric" autocomplete="cc-number" maxlength="23" placeholder="1234 5678 9012 3456"
-                       [ngModel]="form.card.number" (ngModelChange)="form.card.number = groupCard($event)" />
-              </label>
-              <div class="two">
-                <label>Expiry (MM/YY)
-                  <input name="exp" inputmode="numeric" autocomplete="cc-exp" maxlength="5" placeholder="08/29"
-                         [ngModel]="form.card.expiry" (ngModelChange)="form.card.expiry = slashExpiry($event)" />
-                </label>
-                <label>CVC <input name="cvc" inputmode="numeric" autocomplete="cc-csc" maxlength="4" [(ngModel)]="form.card.cvc" /></label>
-              </div>
-              <p class="hint">Demo payment, nothing is charged. Use 4242 4242 4242 4242 with any future date.
-                4000 0000 0000 0002 shows a declined card.</p>
-            </div>
+            <p class="hint">You pay the first month by card in the next step. Nothing is charged in this demo.</p>
             <label class="check">
               <input type="checkbox" name="terms" [(ngModel)]="form.accept_terms" />
               <span>I agree to the MyTerra terms of service and confirm my details are correct.</span>
@@ -102,11 +88,11 @@ const day = (offset: number, years = 0) => {
           </fieldset>
 
           @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
-          <button class="btn" type="submit" [disabled]="pending()">
-            {{ pending() ? 'Paying…' : 'Pay ' + (price() | currency: 'USD' : 'symbol' : '1.0-2') + ' and apply' }}
-          </button>
+          <button class="btn" type="submit">Continue to payment</button>
         </form>
       }
+      <app-pay-dialog #payment [amount]="price()" [description]="planName() + ', first month'"
+                      [pay]="payWith" (paid)="onPaid()" />
     </div>
   `,
 })
@@ -120,30 +106,22 @@ export class Apply implements OnInit {
   form = {
     name: '', password: '', birth_date: '', id_number: '', city: '', street: '', apartment: '',
     install_date: '', plan_id: '', accept_terms: false,
-    card: { holder: '', number: '', expiry: '', cvc: '' },
   };
-  pending = signal(false);
   error = signal('');
   sent = signal(false);
   readonly adultMax = day(0, -18);
   readonly installMin = day(1);
   readonly installMax = day(60);
+  private payment = viewChild.required<PayDialog>('payment');
+
   price() { return this.plans().find(p => p.id === this.form.plan_id)?.price ?? 0; }
+  planName() { return this.plans().find(p => p.id === this.form.plan_id)?.name ?? ''; }
 
   ngOnInit() {
     this.api.plans().subscribe({
       next: p => this.plans.set(p),
       error: e => this.error.set(errorText(e)),
     });
-  }
-
-  groupCard(v: string) {
-    return v.replace(/\D/g, '').slice(0, 19).replace(/(\d{4})(?=\d)/g, '$1 ');
-  }
-
-  slashExpiry(v: string) {
-    const d = v.replace(/\D/g, '').slice(0, 4);
-    return d.length > 2 ? `${d.slice(0, 2)}/${d.slice(2)}` : d;
   }
 
   private problem(): string {
@@ -157,32 +135,29 @@ export class Apply implements OnInit {
     if (!f.city.trim() || !f.street.trim()) return 'Enter your address';
     if (!f.install_date) return 'Pick an installation date';
     if (!f.plan_id) return 'Choose a plan';
-    if (!f.card.holder.trim() || f.card.number.replace(/\D/g, '').length < 13) return 'Enter your card details';
-    if (!/^\d{2}\/\d{2}$/.test(f.card.expiry)) return 'Enter the card expiry as MM/YY';
-    if (!/^\d{3,4}$/.test(f.card.cvc)) return 'Enter the 3 or 4 digit CVC';
     if (!f.accept_terms) return 'Accept the terms to continue';
     return '';
   }
 
+  /** Checks the form, then opens the card window. */
   submit() {
-    if (this.pending()) return;
     const problem = this.problem();
     this.error.set(problem);
-    if (problem) return;
-    this.pending.set(true);
-    this.api.apply({
-      ...this.form,
-      email: this.email().trim(),
-      phone: this.phone().trim(),
-      email_verification_id: this.emailVerification(),
-      phone_verification_id: this.phoneVerification(),
-      card: { ...this.form.card, number: this.form.card.number.replace(/\D/g, '') },
-    }).subscribe({
-      next: () => this.sent.set(true),
-      error: e => {
-        this.error.set(errorText(e));
-        this.pending.set(false);
-      },
-    });
+    if (!problem) this.payment().open();
+  }
+
+  /** Called by the card window: the application is sent together with the card. */
+  payWith = (card: CardDetails) => this.api.apply({
+    ...this.form,
+    email: this.email().trim(),
+    phone: this.phone().trim(),
+    email_verification_id: this.emailVerification(),
+    phone_verification_id: this.phoneVerification(),
+    card,
+  });
+
+  onPaid() {
+    this.sent.set(true);
+    window.scrollTo({ top: 0 });
   }
 }

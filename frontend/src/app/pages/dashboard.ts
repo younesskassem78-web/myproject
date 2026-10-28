@@ -1,14 +1,15 @@
 import { CurrencyPipe, DecimalPipe } from '@angular/common';
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { forkJoin } from 'rxjs';
 import { ApiService } from '../core/api.service';
 import { Me, Usage } from '../core/models';
+import { PayDialog } from './pay-dialog';
 import { UsageChart } from './usage-chart';
 
 @Component({
   selector: 'app-dashboard',
-  imports: [FormsModule, CurrencyPipe, DecimalPipe, UsageChart],
+  imports: [FormsModule, CurrencyPipe, DecimalPipe, UsageChart, PayDialog],
   template: `
     @if (loadError()) {
       <p class="error" role="alert">{{ loadError() }}</p>
@@ -38,16 +39,16 @@ import { UsageChart } from './usage-chart';
             </label>
             @if (topUpError()) { <p class="error on-dark" role="alert">{{ topUpError() }}</p> }
             @if (topUpDone()) { <p class="ok" role="status">{{ topUpDone() }}</p> }
-            <button class="btn btn-amber" type="submit" [disabled]="pending()">
-              {{ pending() ? 'Topping up…' : 'Top up' }}
-            </button>
+            <button class="btn btn-amber" type="submit">Top up</button>
           </form>
-          <p class="fine">Demo only. No real payment is made.</p>
+          <p class="fine">You pay by card in the next step. Demo only, nothing is charged.</p>
         </section>
       </div>
     } @else {
       <p class="muted">Loading your account…</p>
     }
+    <app-pay-dialog #payment [amount]="topUpAmount()" description="Top up your MyTerra balance"
+                    [pay]="payTopUp" (paid)="onTopUpPaid($any($event))" />
   `,
 })
 export class Dashboard implements OnInit {
@@ -56,9 +57,10 @@ export class Dashboard implements OnInit {
   usage = signal<Usage | null>(null);
   loadError = signal('');
   amount: string | number = '';
-  pending = signal(false);
+  topUpAmount = signal(0);
   topUpError = signal('');
   topUpDone = signal('');
+  private payment = viewChild.required<PayDialog>('payment');
 
   percent = computed(() => {
     const u = this.usage();
@@ -76,8 +78,8 @@ export class Dashboard implements OnInit {
     });
   }
 
+  /** Checks the amount, then opens the card window. */
   topUp() {
-    if (this.pending()) return;
     this.topUpDone.set('');
     const raw = String(this.amount ?? '').trim();
     const n = Number(raw);
@@ -86,18 +88,15 @@ export class Dashboard implements OnInit {
       return;
     }
     this.topUpError.set('');
-    this.pending.set(true);
-    this.api.topUp(n).subscribe({
-      next: r => {
-        this.me.update(m => m && { ...m, balance: r.balance });
-        this.topUpDone.set(`Added $${n.toFixed(2)}`);
-        this.amount = '';
-        this.pending.set(false);
-      },
-      error: () => {
-        this.topUpError.set('Top-up failed. Try again.');
-        this.pending.set(false);
-      },
-    });
+    this.topUpAmount.set(n);
+    this.payment().open();
+  }
+
+  payTopUp = () => this.api.topUp(this.topUpAmount());
+
+  onTopUpPaid(r: { balance: number }) {
+    this.me.update(m => m && { ...m, balance: r.balance });
+    this.topUpDone.set(`Added $${this.topUpAmount().toFixed(2)}`);
+    this.amount = '';
   }
 }

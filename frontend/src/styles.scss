@@ -61,7 +61,7 @@ form { display: grid; gap: 1rem; }
 .page { max-width: 1100px; margin: 0 auto; padding: clamp(1.5rem, 4vw, 3rem) clamp(1rem, 4vw, 3rem) 4rem; }
 
 /* Login */
-.login { min-height: 100vh; display: grid; grid-template-columns: 1.1fr 1fr; }
+.login { min-height: 100vh; min-height: 100dvh; display: grid; grid-template-columns: 1.1fr 1fr; }
 .login-brand {
   background: var(--pine-deep); color: #e6f1ee; padding: clamp(2rem, 6vw, 5rem);
   display: flex; flex-direction: column; justify-content: flex-end; gap: 1.25rem;
@@ -174,7 +174,7 @@ td select { min-width: 0; }
 .login-brand a.wordmark { text-decoration: none; }
 
 /* Apply (full form) */
-.apply { min-height: 100vh; }
+.apply { min-height: 100vh; min-height: 100dvh; }
 .apply-head { display: flex; justify-content: space-between; align-items: center; padding: 1.25rem clamp(1rem, 4vw, 3rem); background: var(--pine-deep); }
 .apply-head .wordmark { font-size: 1.5rem; font-weight: 800; color: var(--amber); text-decoration: none; }
 .apply-head a:last-child { color: #e6f1ee; font-weight: 600; }
@@ -199,3 +199,37 @@ td select { min-width: 0; }
 .check { display: flex; gap: 0.75rem; align-items: flex-start; font-weight: 400; }
 .check input { width: auto; margin-top: 0.3rem; accent-color: var(--pine); }
 @media (max-width: 600px) { .two { grid-template-columns: 1fr; } }
+
+/* Card payment window */
+body:has(dialog[open]) { overflow: hidden; } /* the page behind stays still */
+dialog.pay {
+  width: min(26rem, calc(100vw - 2rem)); max-height: calc(100dvh - 2rem); overflow-y: auto; overscroll-behavior: contain;
+  border: 0; border-radius: 20px; padding: 1.5rem; background: var(--surface); color: var(--ink);
+  box-shadow: 0 24px 60px rgb(18 48 42 / 0.35);
+}
+dialog.pay::backdrop { background: rgb(18 48 42 / 0.55); }
+dialog.pay form { display: grid; gap: 1rem; }
+.pay-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; }
+.pay-head h2 { margin: 0; font-size: 1.5rem; }
+.pay-close { font-size: 1.25rem; line-height: 1; background: none; border: 0; color: var(--muted); cursor: pointer; padding: 0.25rem; }
+.card-preview {
+  aspect-ratio: 1.586; border-radius: 16px; padding: 1.1rem 1.25rem; color: #fff; position: relative;
+  display: grid; grid-template-rows: auto 1fr auto; overflow: hidden;
+  background: linear-gradient(135deg, var(--pine-deep) 0%, var(--pine) 60%, #2a8a72 100%);
+}
+.card-preview::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(100deg, transparent 0 70%, rgb(240 173 58 / 0.85) 70% 70.8%, transparent 70.8%);
+}
+.card-chip { width: 2.4rem; height: 1.8rem; border-radius: 6px; background: linear-gradient(135deg, #f6d38a, var(--amber)); }
+.card-brand { position: absolute; top: 1.1rem; right: 1.25rem; font: 800 1.1rem var(--display); }
+.card-pan { align-self: center; font: 600 clamp(1.05rem, 5vw, 1.35rem) var(--display); letter-spacing: 0.08em; font-variant-numeric: tabular-nums; }
+.card-foot { display: flex; justify-content: space-between; font-size: 0.9375rem; opacity: 0.9; }
+.pay-btn { justify-self: stretch; }
+.pay-done { font: 700 1.25rem var(--display); color: var(--pine); text-align: center; padding: 1rem 0; }
+.pay-done::before { content: '✓ '; }
+@media (prefers-reduced-motion: no-preference) {
+  dialog.pay[open] { animation: pay-in 0.18s ease-out; }
+  @keyframes pay-in { from { opacity: 0; transform: translateY(12px); } }
+}
+dialog.pay .two { grid-template-columns: 1fr 1fr; }
