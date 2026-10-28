@@ -2,7 +2,7 @@ import uuid
 from datetime import date
 
 from app import db
-from app.main import daily_usage
+from app.deps import daily_usage
 
 
 def test_seed_uses_uuids():
