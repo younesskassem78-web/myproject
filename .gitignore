@@ -10,3 +10,5 @@ dist/
 # Superpowers workspace
 .superpowers/
 .playwright-mcp/
+.pgdata/
+backend/.env
