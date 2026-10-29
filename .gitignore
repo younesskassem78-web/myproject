@@ -13,3 +13,4 @@ dist/
 .pgdata/
 backend/.env
 .env
+backups/

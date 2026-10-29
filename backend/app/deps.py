@@ -8,7 +8,7 @@ from typing import Annotated
 from uuid import UUID
 
 import psycopg
-from fastapi import Depends, Header, HTTPException
+from fastapi import Depends, Header, HTTPException, Query
 from psycopg import sql
 from pydantic import BaseModel, BeforeValidator, Field, StringConstraints, model_validator
 
@@ -118,3 +118,14 @@ def charge_card(card: Card) -> None:
     """Fake card processor: every valid card is approved except the declined test number."""
     if card.number == DECLINED_TEST_CARD:
         raise HTTPException(402, "Your card was declined. Try another card.")
+
+
+Limit = Annotated[int, Query(ge=1, le=1000)]
+Offset = Annotated[int, Query(ge=0)]
+
+
+def paged(conn, response, query: str, params: tuple = (), limit: int = 500, offset: int = 0) -> list:
+    """Run `query` one page at a time; the full count goes in the X-Total-Count header."""
+    total = conn.execute(f"select count(*)::int as n from ({query}) q", params).fetchone()["n"]
+    response.headers["X-Total-Count"] = str(total)
+    return conn.execute(f"{query} limit %s offset %s", (*params, limit, offset)).fetchall()

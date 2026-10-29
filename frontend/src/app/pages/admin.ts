@@ -9,6 +9,13 @@ import { AdminPlan, AdminUser, Application, InstallStatus, Role } from '../core/
 type Tab = 'applications' | 'users' | 'plans';
 const TITLES: Record<Tab, string> = { applications: 'Applications', users: 'Customers', plans: 'Plans' };
 const blankUser = () => ({ name: '', email: '', password: '', role: 'customer' as Role, plan_id: '', balance: 0, city: '' });
+/** A number typed by an admin, or null if the box is blank or not a number. Blank must never become 0. */
+export function num(v: unknown): number | null {
+  const s = String(v ?? '').trim();
+  const n = Number(s);
+  return s && Number.isFinite(n) ? n : null;
+}
+
 const blankPlan = () => ({ name: '', data_gb: null as number | null, speed_mbps: null as number | null, price: null as number | null });
 
 /** Applications, customers and plans. Which one shows comes from the route. */
@@ -236,7 +243,9 @@ export class Admin implements OnInit {
 
   createUser() {
     const u = this.newUser;
-    this.run(this.api.createUser({ ...u, plan_id: u.plan_id || null, city: u.city.trim() || null, balance: Number(u.balance) || 0 }),
+    const balance = String(u.balance ?? '').trim() === '' ? 0 : num(u.balance);
+    if (balance === null || balance < 0) return this.fail('Enter a balance of 0 or more');
+    this.run(this.api.createUser({ ...u, plan_id: u.plan_id || null, city: u.city.trim() || null, balance }),
       `Added ${u.email}.`, () => (this.newUser = blankUser()));
   }
   setRole(u: AdminUser, role: Role) { this.run(this.api.updateUser(u.id, { role }), `${u.email} is now ${role === 'admin' ? 'an admin' : 'a customer'}.`); }
@@ -244,7 +253,11 @@ export class Admin implements OnInit {
   setInstall(u: AdminUser, status: InstallStatus) {
     if (status) this.run(this.api.updateUser(u.id, { install_status: status }), `Updated ${u.email}'s installation. They've been notified.`);
   }
-  saveBalance(u: AdminUser) { this.run(this.api.updateUser(u.id, { balance: Number(u.balance) }), `Saved ${u.email}'s balance.`); }
+  saveBalance(u: AdminUser) {
+    const balance = num(u.balance);
+    if (balance === null || balance < 0) { this.fail(`Enter a balance of 0 or more for ${u.email}. Nothing was saved.`); this.load(); return; }
+    this.run(this.api.updateUser(u.id, { balance }), `Saved ${u.email}'s balance.`);
+  }
   toggleActive(u: AdminUser) {
     this.run(this.api.updateUser(u.id, { active: !u.active }), `${u.active ? 'Deactivated' : 'Activated'} ${u.email}.`);
   }
@@ -258,14 +271,32 @@ export class Admin implements OnInit {
     }
   }
 
+  /** Name, data, speed and price exactly as typed, or an error message. */
+  private planFields(p: { name: string; data_gb: unknown; speed_mbps: unknown; price: unknown }) {
+    const fields = { name: p.name.trim(), data_gb: num(p.data_gb), speed_mbps: num(p.speed_mbps), price: num(p.price) };
+    if (!fields.name) return 'Enter a plan name';
+    if (!fields.data_gb || fields.data_gb <= 0) return 'Enter the data allowance in GB (more than 0)';
+    if (!fields.speed_mbps || fields.speed_mbps <= 0) return 'Enter the speed in Mbps (more than 0)';
+    if (fields.price === null || fields.price < 0) return 'Enter a price of 0 or more';
+    return fields;
+  }
+
+  private fail(message: string) {
+    this.notice.set('');
+    this.error.set(message);
+  }
+
   createPlan() {
     const p = this.newPlan;
-    this.run(this.api.createPlan({ name: p.name, data_gb: Number(p.data_gb), speed_mbps: Number(p.speed_mbps) || 100, price: Number(p.price) }),
+    const fields = this.planFields(p);
+    if (typeof fields === 'string') return this.fail(fields);
+    this.run(this.api.createPlan(fields),
       `Added ${p.name}.`, () => (this.newPlan = blankPlan()));
   }
   savePlan(p: AdminPlan) {
-    this.run(this.api.updatePlan(p.id, { name: p.name, data_gb: Number(p.data_gb), speed_mbps: Number(p.speed_mbps), price: Number(p.price) }),
-      `Saved ${p.name}.`);
+    const fields = this.planFields(p);
+    if (typeof fields === 'string') { this.fail(`${fields}. Nothing was saved.`); this.load(); return; }
+    this.run(this.api.updatePlan(p.id, fields), `Saved ${fields.name}.`);
   }
   togglePlan(p: AdminPlan) { this.run(this.api.updatePlan(p.id, { active: !p.active }), `${p.active ? 'Hid' : 'Put on sale'} ${p.name}.`); }
   deletePlan(p: AdminPlan) {

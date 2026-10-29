@@ -73,6 +73,9 @@ const day = (offset: number, years = 0) => {
           <fieldset>
             <legend><span class="step">3</span> Plan and first payment</legend>
             <div class="plans">
+              @if (plansLoaded() && !plans().length) {
+                <p class="error" role="alert">No plans are available right now, so applications are closed. Please try again later.</p>
+              }
               @for (p of plans(); track p.id) {
                 <label class="plan-option">
                   <input type="radio" name="plan" [value]="p.id" [(ngModel)]="form.plan_id" />
@@ -99,6 +102,7 @@ const day = (offset: number, years = 0) => {
 export class Apply implements OnInit {
   private api = inject(ApiService);
   plans = signal<Plan[]>([]);
+  plansLoaded = signal(false);
   email = signal('');
   phone = signal('');
   emailVerification = signal('');
@@ -119,7 +123,7 @@ export class Apply implements OnInit {
 
   ngOnInit() {
     this.api.plans().subscribe({
-      next: p => this.plans.set(p),
+      next: p => { this.plans.set(p); this.plansLoaded.set(true); },
       error: e => this.error.set(errorText(e)),
     });
   }

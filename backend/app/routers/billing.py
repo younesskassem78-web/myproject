@@ -3,11 +3,11 @@ from datetime import date, timedelta
 from typing import Literal
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Response
 from pydantic import BaseModel, model_validator
 
 from app import events
-from app.deps import DB, Admin, Card, User, charge_card
+from app.deps import DB, Admin, Card, Limit, Offset, User, charge_card, paged
 
 router = APIRouter()
 
@@ -156,6 +156,6 @@ def run_billing(admin: Admin, conn: DB):
 
 
 @router.get("/api/admin/invoices")
-def all_invoices(_: Admin, conn: DB):
-    return conn.execute(f"select {INV_COLS}, u.email as user_email, u.name as user_name from invoices i "
-                        "join users u on u.id = i.user_id order by i.period desc, i.issued_at desc limit 300").fetchall()
+def all_invoices(_: Admin, conn: DB, response: Response, limit: Limit = 500, offset: Offset = 0):
+    return paged(conn, response, f"select {INV_COLS}, u.email as user_email, u.name as user_name from invoices i "
+                 "join users u on u.id = i.user_id order by i.period desc, i.issued_at desc, i.id", (), limit, offset)

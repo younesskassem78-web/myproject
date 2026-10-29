@@ -8,7 +8,8 @@ from psycopg import errors
 from pydantic import BaseModel, Field
 
 from app import db, events
-from app.deps import APP_URL, DB, PLAN_COLS, USER_COLS, Admin, Email, Money, Password, Text, send_email_quietly, update_row
+from app.deps import (APP_URL, DB, PLAN_COLS, USER_COLS, Admin, Email, Limit, Money, Offset, Password, Text, paged,
+                      send_email_quietly, update_row)
 from app.routers.billing import issue_invoice
 
 router = APIRouter()
@@ -83,18 +84,18 @@ def overview(_: Admin, conn: DB):
 
 
 @router.get("/api/admin/audit")
-def audit_log(_: Admin, conn: DB):
-    return conn.execute("select * from audit_log order by created_at desc limit 200").fetchall()
+def audit_log(_: Admin, conn: DB, response: Response, limit: Limit = 200, offset: Offset = 0):
+    return paged(conn, response, "select * from audit_log order by created_at desc, id", (), limit, offset)
 
 
 # ---------- applications ----------
 
 @router.get("/api/admin/applications")
-def list_applications(_: Admin, conn: DB):
-    return conn.execute("select a.id, a.name, a.email, a.phone, a.birth_date, a.id_number, a.city, a.street, "
+def list_applications(_: Admin, conn: DB, response: Response, limit: Limit = 500, offset: Offset = 0):
+    return paged(conn, response, "select a.id, a.name, a.email, a.phone, a.birth_date, a.id_number, a.city, a.street, "
                         "a.apartment, a.install_date, a.card_brand, a.card_last4, a.amount_paid::float8 as amount_paid, "
                         "a.status, a.created_at, p.name as plan_name "
-                        "from applications a join plans p on p.id = a.plan_id order by a.created_at desc").fetchall()
+                        "from applications a join plans p on p.id = a.plan_id order by a.created_at desc, a.id", (), limit, offset)
 
 
 @router.post("/api/admin/applications/{app_id}/approve")
@@ -152,11 +153,11 @@ def reject(app_id: UUID, admin: Admin, conn: DB):
 # ---------- customers ----------
 
 @router.get("/api/admin/users")
-def list_users(_: Admin, conn: DB):
-    return conn.execute(f"select {USER_COLS}, p.name as plan_name, "
+def list_users(_: Admin, conn: DB, response: Response, limit: Limit = 500, offset: Offset = 0):
+    return paged(conn, response, f"select {USER_COLS}, p.name as plan_name, "
                         "(select coalesce(sum(i.amount), 0)::float8 from invoices i "
                         " where i.user_id = u.id and i.status = 'unpaid') as amount_due "
-                        "from users u left join plans p on p.id = u.plan_id order by u.created_at").fetchall()
+                        "from users u left join plans p on p.id = u.plan_id order by u.created_at, u.id", (), limit, offset)
 
 
 @router.post("/api/admin/users", status_code=201)
@@ -187,7 +188,10 @@ def update_user(user_id: UUID, body: UserChanges, admin: Admin, conn: DB):
         changes["password_hash"] = db.hash_password(changes.pop("password"))
     try:
         with conn.transaction():
-            before = conn.execute("select install_status from users where id = %s", (user_id,)).fetchone()
+            before = conn.execute("select install_status, role, plan_id from users where id = %s for update",
+                                  (user_id,)).fetchone()
+            if before and changes.get("role", before["role"]) == "customer" and not changes.get("plan_id", before["plan_id"]):
+                raise HTTPException(422, "Customers need a plan. Choose one at the same time.")
             row = update_row(conn, "users", user_id, changes,
                              "id, email, name, role, plan_id, balance::float8 as balance, active, city, "
                              "install_status, install_date")

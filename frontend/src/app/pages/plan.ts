@@ -16,7 +16,7 @@ import { Plan } from '../core/models';
     <div class="plan-grid">
       @for (p of plans(); track p.id) {
         <section class="card plan-card" [class.current]="p.id === currentId()">
-          @if (p.id === currentId()) { <span class="plan-badge">Your plan</span> }
+          @if (p.id === currentId()) { <span class="plan-badge">Your plan{{ p.active ? '' : ', no longer sold' }}</span> }
           <h2>{{ p.name }}</h2>
           <p class="plan-price">{{ p.price | currency: 'USD' : 'symbol' : '1.0-2' }}<span>/month</span></p>
           <ul>
@@ -46,7 +46,9 @@ export class PlanPage implements OnInit {
   ngOnInit() {
     forkJoin({ plans: this.api.plans(), me: this.api.me() }).subscribe({
       next: r => {
-        this.plans.set(r.plans);
+        // A plan that's no longer sold still belongs on this page for the people on it.
+        const mine = r.me.plan;
+        this.plans.set(mine && !r.plans.some(p => p.id === mine.id) ? [mine, ...r.plans] : r.plans);
         this.currentId.set(r.me.plan?.id ?? null);
         this.currentPrice.set(r.me.plan?.price ?? 0);
       },

@@ -7,7 +7,7 @@ from datetime import date, datetime, timedelta, timezone
 from typing import Annotated, Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Header, HTTPException, Response
+from fastapi import APIRouter, Header, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
 from psycopg import errors
 from pydantic import BaseModel, StringConstraints, field_validator, model_validator
@@ -108,16 +108,21 @@ def plans(conn: DB):
     return conn.execute(f"select {PLAN_COLS} from plans where active order by price").fetchall()
 
 
-LOCK_AFTER = 5  # wrong passwords within 15 minutes
+LOCK_AFTER = 5  # wrong passwords for one email within 15 minutes
+IP_LOCK_AFTER = 30  # wrong passwords from one network address within 15 minutes, any email
 
 
 @router.post("/api/login")
-def login(body: Login, conn: DB):
+def login(body: Login, conn: DB, request: Request):
     email = body.email.strip().lower()
-    fails = conn.execute("select count(*)::int as n from login_failures where email = %s "
-                         "and created_at > now() - interval '15 minutes'", (email,)).fetchone()["n"]
-    if fails >= LOCK_AFTER:
+    ip = request.client.host if request.client else None
+    fails = conn.execute("select count(*) filter (where email = %s)::int as by_email, "
+                         "count(*) filter (where ip = %s)::int as by_ip from login_failures "
+                         "where created_at > now() - interval '15 minutes'", (email, ip)).fetchone()
+    if fails["by_email"] >= LOCK_AFTER:
         raise HTTPException(429, "Too many wrong passwords. Try again in 15 minutes or reset your password.")
+    if fails["by_ip"] >= IP_LOCK_AFTER:
+        raise HTTPException(429, "Too many sign-in attempts from your network. Try again in 15 minutes.")
     user = conn.execute("select id, name, role, active, password_hash from users where email = %s", (email,)).fetchone()
     if user and db.verify_password(body.password, user["password_hash"]):
         if not user["active"]:
@@ -137,7 +142,8 @@ def login(body: Login, conn: DB):
             raise HTTPException(403, "Your application is waiting for approval")
         if application["status"] == "rejected":
             raise HTTPException(403, "Your application was not approved")
-    conn.execute("insert into login_failures (email) values (%s)", (email,))
+    conn.execute("delete from login_failures where created_at < now() - interval '1 day'")
+    conn.execute("insert into login_failures (email, ip) values (%s, %s)", (email, ip))
     raise HTTPException(401, "Invalid email or password")
 
 
@@ -152,6 +158,7 @@ def _issue_code(conn, channel: str, target: str, send) -> str:
     if conn.execute("select 1 from verifications where channel = %s and target = %s and verified_at is null "
                     "and created_at > now() - interval '60 seconds'", (channel, target)).fetchone():
         raise HTTPException(429, "Wait a minute before asking for another code")
+    conn.execute("delete from verifications where expires_at < now() - interval '1 day'")
     code = f"{secrets.randbelow(10**6):06d}"
     vid = conn.execute("insert into verifications (channel, target, code_hash, expires_at) "
                        "values (%s, %s, '', now() + interval '10 minutes') returning id", (channel, target)).fetchone()["id"]

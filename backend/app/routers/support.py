@@ -2,11 +2,11 @@
 from typing import Literal
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Response
 from pydantic import BaseModel
 
 from app import events
-from app.deps import DB, Admin, Text, User
+from app.deps import DB, Admin, Limit, Offset, Text, User, paged
 
 router = APIRouter()
 
@@ -88,11 +88,11 @@ class StatusChange(BaseModel):
 
 
 @router.get("/api/admin/tickets")
-def list_all_tickets(_: Admin, conn: DB):
-    return conn.execute(f"select {TICKET_COLS}, u.email as user_email, u.name as user_name, "
+def list_all_tickets(_: Admin, conn: DB, response: Response, limit: Limit = 500, offset: Offset = 0):
+    return paged(conn, response, f"select {TICKET_COLS}, u.email as user_email, u.name as user_name, "
                         "(select count(*)::int from ticket_messages m where m.ticket_id = t.id) as replies "
                         "from tickets t join users u on u.id = t.user_id "
-                        "order by (t.status = 'resolved'), t.updated_at desc").fetchall()
+                        "order by (t.status = 'resolved'), t.updated_at desc, t.id", (), limit, offset)
 
 
 @router.get("/api/admin/tickets/{ticket_id}")

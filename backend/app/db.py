@@ -178,6 +178,27 @@ create table if not exists usage_alerts (
   level int not null,
   primary key (user_id, month, level)
 );
+-- v3 (QA audit): indexes on lookup columns, per-address sign-in limit, real foreign key for attached speed tests
+alter table login_failures add column if not exists ip text;
+create index if not exists login_failures_ip on login_failures (ip, created_at);
+create index if not exists tickets_user on tickets (user_id, created_at desc);
+create index if not exists payments_user on payments (user_id, created_at desc);
+create index if not exists payments_invoice on payments (invoice_id);
+create index if not exists tokens_user on tokens (user_id);
+create index if not exists ticket_messages_ticket on ticket_messages (ticket_id, created_at);
+create index if not exists speed_tests_user on speed_tests (user_id, created_at desc);
+create index if not exists users_plan on users (plan_id);
+create index if not exists applications_email on applications (email, created_at desc);
+create index if not exists applications_plan on applications (plan_id);
+create index if not exists audit_log_created on audit_log (created_at desc);
+update tickets t set speed_test_id = null
+  where speed_test_id is not null and not exists (select 1 from speed_tests s where s.id = t.speed_test_id);
+do $$ begin
+  if not exists (select 1 from pg_constraint where conname = 'tickets_speed_test_id_fkey') then
+    alter table tickets add constraint tickets_speed_test_id_fkey
+      foreign key (speed_test_id) references speed_tests(id) on delete set null;
+  end if;
+end $$;
 """
 
 
