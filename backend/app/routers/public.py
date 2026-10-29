@@ -1,5 +1,6 @@
 import hashlib
 import hmac
+import os
 import re
 import secrets
 from datetime import date, datetime, timedelta, timezone
@@ -146,8 +147,8 @@ def logout(conn: DB, authorization: str | None = Header(None)):
     return Response(status_code=204)
 
 
-def _issue_code(conn, channel: str, target: str, send) -> None:
-    """Create a 6-digit code for `target` and deliver it with `send(text)`."""
+def _issue_code(conn, channel: str, target: str, send) -> str:
+    """Create a 6-digit code for `target`, deliver it with `send(text)` and return it."""
     if conn.execute("select 1 from verifications where channel = %s and target = %s and verified_at is null "
                     "and created_at > now() - interval '60 seconds'", (channel, target)).fetchone():
         raise HTTPException(429, "Wait a minute before asking for another code")
@@ -162,6 +163,7 @@ def _issue_code(conn, channel: str, target: str, send) -> None:
         conn.execute("delete from verifications where id = %s", (vid,))
         what = "email" if channel == "email" else "SMS"
         raise HTTPException(502, f"We couldn't send the {what}. Check it and try again.") from None
+    return code
 
 
 def _check_code(conn, channel: str, target: str, code: str) -> UUID:
@@ -185,10 +187,16 @@ def _check_code(conn, channel: str, target: str, code: str) -> UUID:
 @router.post("/api/verify/send")
 def verify_send(body: VerifySend, conn: DB):
     if body.channel == "email":
-        _issue_code(conn, "email", body.target,
-                    lambda text: notify.send_email(body.target, "Your MyTerra verification code", text))
+        code = _issue_code(conn, "email", body.target,
+                           lambda text: notify.send_email(body.target, "Your MyTerra verification code", text))
+        live = notify.email_is_live()
     else:
-        _issue_code(conn, "sms", body.target, lambda text: notify.send_sms(body.target, text))
+        code = _issue_code(conn, "sms", body.target, lambda text: notify.send_sms(body.target, text))
+        live = notify.sms_is_live()
+    # Demo mode only: with no email/SMS service connected nobody could receive the code, so show it on screen.
+    # Never in production, and never for password-reset codes (those would let anyone take over an account).
+    if not live and os.environ.get("APP_ENV", "development") != "production":
+        return {"sent": True, "demo_code": code}
     return {"sent": True}
 
 

@@ -447,3 +447,5 @@ dialog.pay .two { grid-template-columns: 1fr 1fr; }
   .card { box-shadow: none; border: 0; padding: 0; }
 }
 .side-cards > *, .bill-cards > *, .settings-grid > *, .plan-grid > * { margin-top: 0 !important; }
+.demo-code { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1rem; background: var(--info-bg); color: var(--info-ink); border-radius: 10px; padding: 0.6rem 0.9rem; font-size: 0.9375rem; font-weight: 400; }
+.demo-code strong { font: 700 1.1rem var(--display); letter-spacing: 0.1em; }

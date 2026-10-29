@@ -30,7 +30,14 @@ import { errorText } from '../core/errors';
                  (keydown.enter)="$event.preventDefault(); check()" />
           <button type="button" class="btn btn-sm" (click)="check()" [disabled]="pending()">Verify</button>
         </span>
-        <p class="hint">We sent a code to {{ value() }}. It expires in 10 minutes.</p>
+        @if (!demoCode()) { <p class="hint">We sent a code to {{ value() }}. It expires in 10 minutes.</p> }
+        @if (demoCode()) {
+          <p class="demo-code" role="status">
+            <span>Demo mode: no {{ channel() === 'email' ? 'email' : 'SMS' }} service is connected, so here's your code:
+              <strong>{{ demoCode() }}</strong></span>
+            <button type="button" class="btn btn-sm btn-ghost" (click)="useDemoCode()">Use this code</button>
+          </p>
+        }
       }
       @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
     </div>
@@ -47,6 +54,7 @@ export class VerifyField {
   sent = signal(false);
   pending = signal(false);
   error = signal('');
+  demoCode = signal('');
 
   edit(v: string) {
     this.value.set(v);
@@ -58,9 +66,14 @@ export class VerifyField {
     this.pending.set(true);
     this.error.set('');
     this.api.sendCode(this.channel(), this.value().trim()).subscribe({
-      next: () => { this.sent.set(true); this.code = ''; this.pending.set(false); },
+      next: r => { this.sent.set(true); this.code = ''; this.demoCode.set(r.demo_code ?? ''); this.pending.set(false); },
       error: e => { this.error.set(errorText(e)); this.pending.set(false); },
     });
+  }
+
+  useDemoCode() {
+    this.code = this.demoCode();
+    this.check();
   }
 
   check() {

@@ -41,6 +41,17 @@ describe('VerifyField', () => {
     expect(fixture.nativeElement.textContent).toContain('Wrong code');
   });
 
+  it('shows and uses the code in demo mode', async () => {
+    const fixture = await setup();
+    api.sendCode.mockReturnValue(of({ sent: true, demo_code: '482913' }));
+    fixture.componentInstance.send();
+    await fixture.whenStable();
+    expect(fixture.nativeElement.textContent).toContain('482913');
+    expect(fixture.nativeElement.textContent).not.toContain('We sent a code');
+    fixture.componentInstance.useDemoCode();
+    expect(api.checkCode).toHaveBeenCalledWith('email', 'a@b.co', '482913');
+  });
+
   it('forgets the verification when the value changes', async () => {
     const fixture = await setup();
     fixture.componentInstance.verifiedId.set('v1');

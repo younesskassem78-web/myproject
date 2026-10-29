@@ -183,3 +183,26 @@ def test_short_password(client, plan_id):
 
 def test_apply_unknown_plan(client):
     assert apply(client, "00000000-0000-0000-0000-000000000000").status_code == 422
+
+
+# ---------- demo codes on screen ----------
+
+def test_demo_mode_shows_the_code(client):
+    r = client.post("/api/verify/send", json={"channel": "email", "target": "a@b.co"}).json()
+    assert r["demo_code"] == code_for("a@b.co")
+
+
+def test_no_demo_code_in_production(client, monkeypatch):
+    monkeypatch.setenv("APP_ENV", "production")
+    assert "demo_code" not in client.post("/api/verify/send", json={"channel": "sms", "target": "+96170111222"}).json()
+
+
+def test_no_demo_code_when_email_is_live(client, monkeypatch):
+    monkeypatch.setenv("GMAIL_USER", "x@gmail.com")
+    monkeypatch.setenv("GMAIL_APP_PASSWORD", "pw")
+    monkeypatch.setattr(notify, "send_email", lambda *a: None)  # don't really send
+    assert "demo_code" not in client.post("/api/verify/send", json={"channel": "email", "target": "a@b.co"}).json()
+
+
+def test_password_reset_never_shows_a_code(client):
+    assert client.post("/api/password/forgot", json={"email": "demo@myterra.app"}).json() == {"sent": True}

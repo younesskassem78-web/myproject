@@ -15,6 +15,14 @@ def _demo(channel: str, to: str, subject: str, body: str) -> None:
     log.warning("DEMO %s to %s | %s | %s", channel.upper(), to, subject, body.replace("\n", " "))
 
 
+def email_is_live() -> bool:
+    return bool(os.environ.get("GMAIL_USER") and os.environ.get("GMAIL_APP_PASSWORD"))
+
+
+def sms_is_live() -> bool:
+    return all(os.environ.get(k) for k in ("TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_FROM"))
+
+
 def send_email(to: str, subject: str, body: str) -> None:
     user, password = os.environ.get("GMAIL_USER"), os.environ.get("GMAIL_APP_PASSWORD")
     if not (user and password):

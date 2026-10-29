@@ -23,7 +23,7 @@ export class ApiService {
   status() { return this.http.get<{ active: Outage[]; recent: Outage[] }>(`${API}/status`); }
   apply(body: object) { return this.http.post<{ id: string; status: string }>(`${API}/apply`, body); }
   sendCode(channel: 'email' | 'sms', target: string) {
-    return this.http.post<{ sent: boolean }>(`${API}/verify/send`, { channel, target });
+    return this.http.post<{ sent: boolean; demo_code?: string }>(`${API}/verify/send`, { channel, target });
   }
   checkCode(channel: 'email' | 'sms', target: string, code: string) {
     return this.http.post<{ verification_id: string }>(`${API}/verify/check`, { channel, target, code });
