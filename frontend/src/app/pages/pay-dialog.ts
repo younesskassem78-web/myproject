@@ -27,7 +27,7 @@ function luhnOk(n: string) {
       <form (ngSubmit)="submit()" novalidate>
         <div class="pay-head">
           <div>
-            <h2 id="pay-title">Pay {{ amount() | currency }}</h2>
+            <h2 id="pay-title">{{ title() || "Pay " + (amount() | currency) }}</h2>
             @if (description()) { <p class="muted">{{ description() }}</p> }
           </div>
           <button type="button" class="pay-close" aria-label="Close" (click)="close()" [disabled]="state() !== 'idle'">✕</button>
@@ -41,7 +41,7 @@ function luhnOk(n: string) {
         </div>
 
         @if (state() === 'done') {
-          <p class="pay-done" role="status">Payment approved</p>
+          <p class="pay-done" role="status">{{ doneLabel() }}</p>
         } @else {
           <label>Name on card <input name="holder" autocomplete="cc-name" [(ngModel)]="card.holder" /></label>
           <label>Card number
@@ -57,7 +57,7 @@ function luhnOk(n: string) {
           </div>
           @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
           <button class="btn pay-btn" type="submit" [disabled]="state() !== 'idle'">
-            {{ state() === 'processing' ? 'Processing…' : 'Pay ' + (amount() | currency) }}
+            {{ state() === 'processing' ? 'Processing…' : (submitLabel() || 'Pay ' + (amount() | currency)) }}
           </button>
           <p class="hint">Demo checkout, nothing is charged. Test card 4242 4242 4242 4242, any future date.
             4000 0000 0000 0002 is declined.</p>
@@ -69,6 +69,9 @@ function luhnOk(n: string) {
 export class PayDialog {
   amount = input.required<number>();
   description = input('');
+  title = input('');
+  submitLabel = input('');
+  doneLabel = input('Payment approved');
   pay = input.required<(card: CardDetails) => Observable<unknown>>();
   delayMs = input(900); // a short wait so the fake payment feels like a real one
   paid = output<unknown>();

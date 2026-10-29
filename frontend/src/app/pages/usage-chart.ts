@@ -1,6 +1,7 @@
-import { Component, ElementRef, OnDestroy, effect, input, viewChild } from '@angular/core';
+import { Component, ElementRef, OnDestroy, effect, inject, input, viewChild } from '@angular/core';
 import { BarController, BarElement, CategoryScale, Chart, LinearScale, Tooltip } from 'chart.js';
 import { UsageDay } from '../core/models';
+import { ThemeService } from '../core/theme.service';
 
 Chart.register(BarController, BarElement, CategoryScale, LinearScale, Tooltip);
 Chart.defaults.font.family = "'Source Sans 3', system-ui, sans-serif";
@@ -13,6 +14,7 @@ export class UsageChart implements OnDestroy {
   days = input.required<UsageDay[]>();
   canvas = viewChild.required<ElementRef<HTMLCanvasElement>>('canvas');
   private chart?: Chart;
+  private theme = inject(ThemeService);
 
   label() {
     return `Daily data use this month, ${this.days().length} days`;
@@ -21,6 +23,7 @@ export class UsageChart implements OnDestroy {
   constructor() {
     effect(() => {
       const days = this.days();
+      this.theme.theme(); // redraw with the right colours when the theme changes
       const ctx = this.canvas().nativeElement.getContext?.('2d');
       if (!ctx) return; // no canvas in the test environment
       this.chart?.destroy();

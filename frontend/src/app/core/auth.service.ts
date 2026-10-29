@@ -34,6 +34,8 @@ export class AuthService {
   }
 
   logout() {
+    // End the session on the server too; the interceptor attaches the token before we clear it.
+    if (this.token()) this.api.logout().subscribe({ error: () => {} });
     for (const key of [TOKEN, NAME, ROLE]) localStorage.removeItem(key);
     this.name.set(null);
     this.role.set(null);

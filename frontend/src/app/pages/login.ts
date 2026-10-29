@@ -25,7 +25,8 @@ import { errorText } from '../core/errors';
         </label>
         @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
         <button class="btn" type="submit" [disabled]="pending()">{{ pending() ? 'Signing in…' : 'Sign in' }}</button>
-        <p class="hint">New here? <a routerLink="/apply">Apply for an account</a>.</p>
+        <p class="hint"><a routerLink="/forgot">Forgot password?</a></p>
+        <p class="hint">New here? <a routerLink="/apply">Apply for an account</a>. Internet down? <a routerLink="/status">Check network status</a>.</p>
         <p class="hint">Demo: <strong>demo&#64;myterra.app</strong> / <strong>demo1234</strong>.
           Admin: <strong>admin&#64;myterra.app</strong> / <strong>admin1234</strong>.</p>
       </form>

@@ -11,7 +11,7 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   return next(req).pipe(
     catchError(err => {
       // Tokens live in server memory, so a backend restart makes ours stale.
-      if (err.status === 401 && token) auth.logout();
+      if (err.status === 401 && token && !req.url.endsWith('/logout')) auth.logout();
       return throwError(() => err);
     }),
   );

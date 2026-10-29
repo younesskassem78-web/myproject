@@ -1,55 +1,53 @@
 import { TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import { of } from 'rxjs';
 import { ApiService } from '../core/api.service';
-import { Me, Usage } from '../core/models';
+import { BillingSummary, Me, Usage } from '../core/models';
 import { Dashboard } from './dashboard';
 
-const me: Me = {
-  id: 'u1', role: 'customer', name: 'Demo User', email: 'demo@myterra.app', balance: 5,
-  plan: { id: 'p1', name: 'Fiber 50 GB', data_gb: 50, price: 20, active: true },
+const base: Me = {
+  id: 'u1', role: 'customer', name: 'Demo User', email: 'demo@myterra.app', balance: 5, phone: null, address: null,
+  city: 'Beirut', autopay: false, card_brand: null, card_last4: null, install_status: 'installed', install_date: null,
+  plan: { id: 'p1', name: 'Fiber 50 GB', data_gb: 50, speed_mbps: 100, price: 20, active: true }, outages: [],
 };
 const usage: Usage = { month: '2026-10', limit_gb: 50, used_gb: 3.5, days: [{ day: 1, gb: 1.5 }, { day: 2, gb: 2 }] };
+const bill: BillingSummary = {
+  amount_due: 20, balance: 5, autopay: false, card_brand: null, card_last4: null,
+  next_invoice: { id: 'i1', number: 'INV-1', period: '2026-10-01', plan_name: 'Fiber 50 GB', amount: 20, status: 'unpaid',
+    issued_at: '', due_date: '2026-11-10', paid_at: null },
+};
 
 describe('Dashboard', () => {
-  let api: { me: any; usage: any; topUp: any };
-
-  async function setup() {
-    api = { me: vi.fn(() => of(me)), usage: vi.fn(() => of(usage)), topUp: vi.fn(() => of({ balance: 15 })) };
-    TestBed.configureTestingModule({ imports: [Dashboard], providers: [{ provide: ApiService, useValue: api }] });
+  async function setup(me: Partial<Me> = {}) {
+    const api = { me: vi.fn(() => of({ ...base, ...me })), usage: vi.fn(() => of(usage)), billing: vi.fn(() => of(bill)) };
+    TestBed.configureTestingModule({ imports: [Dashboard], providers: [provideRouter([]), { provide: ApiService, useValue: api }] });
     const fixture = TestBed.createComponent(Dashboard);
     await fixture.whenStable();
-    return fixture;
+    return fixture.nativeElement.textContent as string;
   }
 
-  it('shows plan, balance and usage', async () => {
-    const text = (await setup()).nativeElement.textContent;
+  it('shows plan, usage and what is due', async () => {
+    const text = await setup();
     expect(text).toContain('Fiber 50 GB');
-    expect(text).toContain('$20/month');
-    expect(text).toContain('$5.00');
+    expect(text).toContain('100 Mbps');
     expect(text).toContain('3.50 GB of 50 GB used');
+    expect(text).toContain('$20.00');
+    expect(text).toContain('Pay now');
   });
 
-  it('opens the card window, then shows the new balance', async () => {
-    const fixture = await setup();
-    const c = fixture.componentInstance;
-    c.amount = '10';
-    c.topUp();
-    await fixture.whenStable();
-    expect(fixture.nativeElement.querySelector('dialog').open).toBe(true);
-    c.payTopUp().subscribe(r => c.onTopUpPaid(r));
-    await fixture.whenStable();
-    expect(api.topUp).toHaveBeenCalledWith(10);
-    expect(fixture.nativeElement.textContent).toContain('$15.00');
+  it('warns about an outage in the customer city', async () => {
+    const text = await setup({ outages: [{ id: 'o1', city: 'Beirut', title: 'No internet in Hamra', message: 'Power cut.',
+      status: 'identified', started_at: '', updated_at: '2026-10-29T10:00:00Z', resolved_at: null }] });
+    expect(text).toContain('No internet in Hamra');
   });
 
-  for (const bad of ['', '0', '-5', '600', 'abc']) {
-    it(`rejects top-up amount "${bad}"`, async () => {
-      const fixture = await setup();
-      fixture.componentInstance.amount = bad;
-      fixture.componentInstance.topUp();
-      await fixture.whenStable();
-      expect(api.topUp).not.toHaveBeenCalled();
-      expect(fixture.nativeElement.textContent).toContain('Enter an amount between 1 and 500');
-    });
-  }
+  it('tracks an installation that is not finished', async () => {
+    const text = await setup({ install_status: 'technician_assigned', install_date: '2026-11-03' });
+    expect(text).toContain('Your installation');
+    expect(text).toContain('Technician assigned');
+  });
+
+  it('hides the installation tracker once installed', async () => {
+    expect(await setup()).not.toContain('Your installation');
+  });
 });
