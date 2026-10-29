@@ -14,3 +14,7 @@ dist/
 backend/.env
 .env
 backups/
+frontend/e2e-report/
+frontend/test-results/
+frontend/coverage/
+backend/.coverage

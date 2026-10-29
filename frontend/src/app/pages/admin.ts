@@ -36,7 +36,7 @@ const blankPlan = () => ({ name: '', data_gb: null as number | null, speed_mbps:
 
     @switch (tab()) {
       @case ('applications') {
-        <div class="table-wrap">
+        <div class="table-wrap" tabindex="0" role="region" aria-label="Scrollable table">
           <table>
             <thead><tr><th>Applicant</th><th>Home and installation</th><th>Plan and payment</th><th>Sent</th><th>Status</th><th></th></tr></thead>
             <tbody>
@@ -95,7 +95,7 @@ const blankPlan = () => ({ name: '', data_gb: null as number | null, speed_mbps:
           </form>
         </details>
 
-        <div class="table-wrap">
+        <div class="table-wrap" tabindex="0" role="region" aria-label="Scrollable table">
           <table>
             <thead><tr><th>User</th><th>Role</th><th>Plan</th><th>Installation</th><th>Balance ($)</th><th>Owes</th><th>Status</th><th></th></tr></thead>
             <tbody>
@@ -149,7 +149,7 @@ const blankPlan = () => ({ name: '', data_gb: null as number | null, speed_mbps:
           <button class="btn btn-sm" type="submit">Add plan</button>
         </form>
 
-        <div class="table-wrap">
+        <div class="table-wrap" tabindex="0" role="region" aria-label="Scrollable table">
           <table>
             <thead><tr><th>Name</th><th>Data (GB)</th><th>Speed (Mbps)</th><th>Price ($)</th><th>Customers</th><th>Status</th><th></th></tr></thead>
             <tbody>

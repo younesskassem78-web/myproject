@@ -15,7 +15,7 @@ import { AuditEntry } from '../../core/models';
     </div>
     <p class="muted lead">Every change an admin makes, newest first. Entries can't be edited or deleted.</p>
     @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
-    <div class="table-wrap">
+    <div class="table-wrap" tabindex="0" role="region" aria-label="Scrollable table">
       <table>
         <thead><tr><th>When</th><th>Admin</th><th>Action</th><th>On</th></tr></thead>
         <tbody>

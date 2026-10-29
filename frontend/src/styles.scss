@@ -208,7 +208,7 @@ form { display: grid; gap: 1rem; }
 .status-summary.ok { background: var(--ok-bg); color: var(--ok-ink); }
 .status-summary.warn { background: var(--warn-bg); color: var(--warn-ink); }
 .outage { display: grid; gap: 0.5rem; }
-.outage.resolved { opacity: 0.8; }
+.outage.resolved { background: var(--surface-2); box-shadow: none; } /* no opacity: it would make text too faint (WCAG contrast) */
 .outage-update { margin-top: 0.5rem; padding: 1rem 0 0; border-top: 1px solid var(--line); background: none; box-shadow: none; }
 
 .apply-form, .apply-done { max-width: 44rem; margin: 0 auto; padding: clamp(1.5rem, 4vw, 3rem) clamp(1rem, 4vw, 2rem) 4rem; }
@@ -449,3 +449,7 @@ dialog.pay .two { grid-template-columns: 1fr 1fr; }
 .side-cards > *, .bill-cards > *, .settings-grid > *, .plan-grid > * { margin-top: 0 !important; }
 .demo-code { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1rem; background: var(--info-bg); color: var(--info-ink); border-radius: 10px; padding: 0.6rem 0.9rem; font-size: 0.9375rem; font-weight: 400; }
 .demo-code strong { font: 700 1.1rem var(--display); letter-spacing: 0.1em; }
+
+/* Readable timestamps inside tinted message bubbles (WCAG contrast). */
+.msg .muted { color: inherit; font-weight: 400; }
+.table-wrap:focus-visible { outline: 3px solid var(--amber); outline-offset: 2px; }

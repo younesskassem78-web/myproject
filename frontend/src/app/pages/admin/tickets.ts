@@ -23,7 +23,7 @@ import { CATEGORY_LABEL, STATUS_LABEL } from '../support';
         </button>
       }
     </div>
-    <div class="table-wrap">
+    <div class="table-wrap" tabindex="0" role="region" aria-label="Scrollable table">
       <table>
         <thead><tr><th>Ticket</th><th>Customer</th><th>Topic</th><th>Updated</th><th>Status</th></tr></thead>
         <tbody>

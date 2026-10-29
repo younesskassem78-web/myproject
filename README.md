@@ -103,6 +103,15 @@ npx ng test --watch=false
 npx ng build --configuration production
 npm audit
 ```
+Browser tests (Playwright, real Chrome) start their own API on port 8011 against a throwaway `myterra_e2e` database (set `E2E_DATABASE_URL` in `backend/.env`; the server refuses any database whose name doesn't end in `_e2e`) and their own site on port 4300:
+
+```bash
+cd frontend
+npx playwright test          # report in frontend/e2e-report
+```
+
+They cover every page at desktop, tablet and phone sizes and in dark mode (content, console errors, sideways scrolling, WCAG 2.1 AA via axe), full journeys with every write read back from the database, and access-control / session / hostile-input checks. The audit report is in `docs/qa/AUDIT.md`.
+
 `.github/workflows/ci.yml` runs all of these on every push, with a PostgreSQL service.
 
 ## Security notes

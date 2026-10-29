@@ -74,7 +74,7 @@ const KIND: Record<string, string> = { invoice: 'Bill payment', topup: 'Top-up',
 
     <section class="card">
       <h2>Bills</h2>
-      <div class="table-wrap flat">
+      <div class="table-wrap flat" tabindex="0" role="region" aria-label="Scrollable table">
         <table>
           <thead><tr><th>Bill</th><th>Month</th><th>Amount</th><th>Due</th><th>Status</th><th></th></tr></thead>
           <tbody>

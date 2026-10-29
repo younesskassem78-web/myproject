@@ -25,7 +25,7 @@ import { AdminInvoice, InvoiceStatus } from '../../core/models';
       </label>
       <input class="search" type="search" placeholder="Search customer or bill number" aria-label="Search" [(ngModel)]="query" />
     </div>
-    <div class="table-wrap">
+    <div class="table-wrap" tabindex="0" role="region" aria-label="Scrollable table">
       <table>
         <thead><tr><th>Bill</th><th>Customer</th><th>Month</th><th>Amount</th><th>Due</th><th>Status</th></tr></thead>
         <tbody>

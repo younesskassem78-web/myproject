@@ -62,7 +62,7 @@ type Phase = 'idle' | 'ping' | 'download' | 'upload' | 'done';
     <section class="card">
       <h2>Past results</h2>
       @if (planSpeed()) { <p class="muted">Your plan: up to {{ planSpeed() }} Mbps.</p> }
-      <div class="table-wrap flat">
+      <div class="table-wrap flat" tabindex="0" role="region" aria-label="Scrollable table">
         <table>
           <thead><tr><th>When</th><th>Download</th><th>Upload</th><th>Ping</th></tr></thead>
           <tbody>
