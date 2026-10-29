@@ -8,6 +8,7 @@ from pathlib import Path
 
 import psycopg
 from psycopg.rows import dict_row
+from psycopg_pool import ConnectionPool
 
 _env = Path(__file__).resolve().parent.parent / ".env"
 if _env.exists():
@@ -180,14 +181,32 @@ create table if not exists usage_alerts (
 """
 
 
+# OWASP (2023) recommends 600,000 rounds for PBKDF2-SHA256. Tests lower it through the environment to stay fast.
+ITERATIONS = int(os.environ.get("PASSWORD_ITERATIONS", "600000"))
+LEGACY_ITERATIONS = 200_000  # hashes stored before the format recorded its round count
+
+
+def _digest(password: str, salt: str, rounds: int) -> str:
+    return hashlib.pbkdf2_hmac("sha256", password.encode(), salt.encode(), rounds).hex()
+
+
 def hash_password(password: str) -> str:
     salt = secrets.token_hex(16)
-    return salt + "$" + hashlib.pbkdf2_hmac("sha256", password.encode(), salt.encode(), 200_000).hex()
+    return f"pbkdf2_sha256${ITERATIONS}${salt}${_digest(password, salt, ITERATIONS)}"
 
 
 def verify_password(password: str, stored: str) -> bool:
-    salt, _, digest = stored.partition("$")
-    return hmac.compare_digest(digest, hashlib.pbkdf2_hmac("sha256", password.encode(), salt.encode(), 200_000).hex())
+    parts = stored.split("$")
+    if len(parts) == 4:
+        _, rounds, salt, digest = parts
+        return hmac.compare_digest(digest, _digest(password, salt, int(rounds)))
+    salt, digest = parts
+    return hmac.compare_digest(digest, _digest(password, salt, LEGACY_ITERATIONS))
+
+
+def needs_rehash(stored: str) -> bool:
+    parts = stored.split("$")
+    return len(parts) != 4 or int(parts[1]) != ITERATIONS
 
 
 @functools.cache
@@ -199,9 +218,20 @@ def connect():
     return psycopg.connect(os.environ["DATABASE_URL"], autocommit=True, row_factory=dict_row)
 
 
+_pool: ConnectionPool | None = None
+
+
+def pool() -> ConnectionPool:
+    """Shared connections, opened once and reused: a new PostgreSQL login costs tens of milliseconds."""
+    global _pool
+    if _pool is None:
+        _pool = ConnectionPool(os.environ["DATABASE_URL"], min_size=1, max_size=int(os.environ.get("DB_POOL_SIZE", "10")),
+                               kwargs={"autocommit": True, "row_factory": dict_row}, open=True)
+    return _pool
+
+
 def get_db():
-    # shortcut: one connection per request, add psycopg_pool if traffic grows
-    with connect() as conn:
+    with pool().connection() as conn:
         yield conn
 
 
@@ -213,10 +243,21 @@ def init(reset: bool = False) -> None:
                       "notifications, outages, payments, invoices, verifications, tickets, tokens, applications, "
                       "users, plans cascade")
         c.execute(SCHEMA)
+        if os.environ.get("DEMO_DATA", "true").lower() == "false":
+            _ensure_admin(c)
+            return
         if not c.execute("select 1 from plans limit 1").fetchone():
             _seed(c)
         if not c.execute("select 1 from invoices limit 1").fetchone():
             _seed_v2(c)
+
+
+def _ensure_admin(c) -> None:
+    """Production: create the first admin from ADMIN_EMAIL / ADMIN_PASSWORD instead of demo accounts."""
+    email, password = os.environ.get("ADMIN_EMAIL"), os.environ.get("ADMIN_PASSWORD")
+    if email and password and not c.execute("select 1 from users where role = 'admin'").fetchone():
+        c.execute("insert into users (email, name, password_hash, role) values (%s, 'Admin', %s, 'admin')",
+                  (email.strip().lower(), hash_password(password)))
 
 
 def _seed(c) -> None:

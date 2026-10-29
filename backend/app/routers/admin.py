@@ -112,7 +112,7 @@ def approve(app_id: UUID, admin: Admin, conn: DB):
                 (a["email"], a["name"], a["password_hash"], a["plan_id"], a["phone"], address or None, a["city"],
                  a["install_date"])).fetchone()["id"]
         except errors.UniqueViolation:
-            raise HTTPException(409, "An account with this email already exists")
+            raise HTTPException(409, "An account with this email already exists") from None
         conn.execute("update applications set status = 'approved' where id = %s", (app_id,))
         if a["amount_paid"]:
             # The payment taken when applying covers the first month.
@@ -173,9 +173,9 @@ def create_user(body: NewUser, admin: Admin, conn: DB):
             events.audit(conn, admin, f"added {body.role}", body.email)
         return row
     except errors.UniqueViolation:
-        raise HTTPException(409, "An account with this email already exists")
+        raise HTTPException(409, "An account with this email already exists") from None
     except errors.ForeignKeyViolation:
-        raise HTTPException(422, "That plan does not exist")
+        raise HTTPException(422, "That plan does not exist") from None
 
 
 @router.patch("/api/admin/users/{user_id}")
@@ -202,9 +202,9 @@ def update_user(user_id: UUID, body: UserChanges, admin: Admin, conn: DB):
                 described = ", ".join(k.replace("_hash", "") for k in changes)
                 events.audit(conn, admin, f"changed {described}", row["email"])
     except errors.UniqueViolation:
-        raise HTTPException(409, "An account with this email already exists")
+        raise HTTPException(409, "An account with this email already exists") from None
     except errors.ForeignKeyViolation:
-        raise HTTPException(422, "That plan does not exist")
+        raise HTTPException(422, "That plan does not exist") from None
     if not row:
         raise HTTPException(404, "User not found")
     return row
@@ -240,7 +240,7 @@ def create_plan(body: NewPlan, admin: Admin, conn: DB):
             events.audit(conn, admin, "added plan", body.name)
         return row
     except errors.UniqueViolation:
-        raise HTTPException(409, "A plan with this name already exists")
+        raise HTTPException(409, "A plan with this name already exists") from None
 
 
 @router.patch("/api/admin/plans/{plan_id}")
@@ -252,7 +252,7 @@ def update_plan(plan_id: UUID, body: PlanChanges, admin: Admin, conn: DB):
             if row and changes:
                 events.audit(conn, admin, f"changed plan {', '.join(changes)}", row["name"])
     except errors.UniqueViolation:
-        raise HTTPException(409, "A plan with this name already exists")
+        raise HTTPException(409, "A plan with this name already exists") from None
     if not row:
         raise HTTPException(404, "Plan not found")
     return row
@@ -266,7 +266,7 @@ def delete_plan(plan_id: UUID, admin: Admin, conn: DB):
             if gone:
                 events.audit(conn, admin, "deleted plan", gone["name"])
     except errors.ForeignKeyViolation:
-        raise HTTPException(409, "This plan is used by customers or applications. Hide it instead.")
+        raise HTTPException(409, "This plan is used by customers or applications. Hide it instead.") from None
     if not gone:
         raise HTTPException(404, "Plan not found")
     return Response(status_code=204)

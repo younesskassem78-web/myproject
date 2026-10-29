@@ -105,3 +105,10 @@ def test_admin_overview(client, admin):
     assert k["active_customers"] == 2 and k["mrr"] == 50.0 and k["unpaid_total"] == 50.0
     assert k["active_outages"] == 1 and k["pending_applications"] == 0
     assert len(o["revenue"]) == 6 and o["revenue"][-2]["amount"] == 50.0
+
+
+def test_public_code_endpoints_cannot_touch_reset_codes(client):
+    client.post("/api/password/forgot", json={"email": "demo@myterra.app"})
+    for path, body in (("/api/verify/send", {"channel": "email", "target": "reset:demo@myterra.app"}),
+                       ("/api/verify/check", {"channel": "email", "target": "reset:demo@myterra.app", "code": "123456"})):
+        assert client.post(path, json=body).status_code == 422

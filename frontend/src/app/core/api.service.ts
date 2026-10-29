@@ -7,7 +7,8 @@ import {
   TicketDetail, TicketMessage, TicketStatus, Usage,
 } from './models';
 
-export const API = 'http://localhost:8001/api';
+// Same-origin: the dev server (proxy.conf.json) and nginx in production forward /api to the backend.
+export const API = '/api';
 
 @Injectable({ providedIn: 'root' })
 export class ApiService {

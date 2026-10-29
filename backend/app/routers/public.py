@@ -7,6 +7,7 @@ from typing import Annotated, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Header, HTTPException, Response
+from fastapi.responses import JSONResponse
 from psycopg import errors
 from pydantic import BaseModel, StringConstraints, field_validator, model_validator
 
@@ -71,7 +72,8 @@ class VerifySend(BaseModel):
     def normalise(self):
         if self.channel == "email":
             self.target = self.target.strip().lower()
-            if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", self.target):
+            # No ":" so a public request can never address the internal "reset:<email>" codes.
+            if ":" in self.target or not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", self.target):
                 raise ValueError("Enter a valid email")
         else:
             self.target = re.sub(r"[\s\-()]", "", self.target)
@@ -90,7 +92,14 @@ def _code_hash(vid: UUID, code: str) -> str:
 
 @router.get("/api/health")
 def health():
-    return {"status": "ok"}
+    """For load balancers and uptime checks: is the API up and can it reach the database?"""
+    try:
+        with db.pool().connection() as conn:
+            conn.execute("select 1")
+    except Exception:
+        log.exception("Health check: database unreachable")
+        return JSONResponse({"status": "degraded", "database": "unreachable"}, status_code=503)
+    return {"status": "ok", "database": "ok"}
 
 
 @router.get("/api/plans")
@@ -114,6 +123,9 @@ def login(body: Login, conn: DB):
             raise HTTPException(403, "Your account is deactivated. Contact support.")
         token = secrets.token_urlsafe(32)
         conn.execute("delete from login_failures where email = %s", (email,))
+        if db.needs_rehash(user["password_hash"]):
+            conn.execute("update users set password_hash = %s where id = %s",
+                         (db.hash_password(body.password), user["id"]))
         conn.execute("delete from tokens where expires_at < now()")  # tidy up old sessions
         conn.execute("insert into tokens (token, user_id) values (%s, %s)", (token, user["id"]))
         return {"token": token, "name": user["name"], "role": user["role"]}
@@ -149,7 +161,7 @@ def _issue_code(conn, channel: str, target: str, send) -> None:
         log.exception("Sending %s code to %s failed", channel, target)
         conn.execute("delete from verifications where id = %s", (vid,))
         what = "email" if channel == "email" else "SMS"
-        raise HTTPException(502, f"We couldn't send the {what}. Check it and try again.")
+        raise HTTPException(502, f"We couldn't send the {what}. Check it and try again.") from None
 
 
 def _check_code(conn, channel: str, target: str, code: str) -> UUID:
@@ -258,7 +270,7 @@ def apply(body: Apply, conn: DB):
                  body.id_number, body.city, body.street, body.apartment, body.install_date, body.card.brand(),
                  body.card.number[-4:], plan["price"])).fetchone()
         except errors.UniqueViolation:
-            raise HTTPException(409, "You already applied with this email. Wait for approval.")
+            raise HTTPException(409, "You already applied with this email. Wait for approval.") from None
     send_email_quietly(body.email, "We received your MyTerra application",
                   f"Hi {body.name},\n\nThanks for applying for {plan['name']}. We charged ${plan['price']:.2f} "
                   f"to your {body.card.brand()} ending in {body.card.number[-4:]} for the first month.\n\n"

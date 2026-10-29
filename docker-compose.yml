@@ -1,0 +1,46 @@
+# Production-style stack: PostgreSQL + API + website on http://localhost:8080
+# Usage: copy .env.example to .env, fill it in, then `docker compose up --build`
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: myterra
+      POSTGRES_USER: myterra
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U myterra -d myterra"]
+      interval: 5s
+      retries: 10
+    restart: unless-stopped
+
+  backend:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgresql://myterra:${POSTGRES_PASSWORD}@db:5432/myterra
+      APP_ENV: production
+      APP_URL: ${APP_URL:-http://localhost:8080}
+      DEMO_DATA: ${DEMO_DATA:-false}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      GMAIL_USER: ${GMAIL_USER:-}
+      GMAIL_APP_PASSWORD: ${GMAIL_APP_PASSWORD:-}
+      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID:-}
+      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN:-}
+      TWILIO_FROM: ${TWILIO_FROM:-}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  pgdata:

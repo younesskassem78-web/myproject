@@ -2,6 +2,8 @@ import os
 
 import pytest
 
+os.environ.setdefault("PASSWORD_ITERATIONS", "1000")  # real default is 600,000; tests only need it to work
+
 from app import db
 
 os.environ["DATABASE_URL"] = os.environ["TEST_DATABASE_URL"]  # never touch the real database in tests
