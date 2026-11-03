@@ -9,6 +9,7 @@ import { AuthService } from '../core/auth.service';
 import { Admin, num } from './admin';
 import { Apply } from './apply';
 import { PlanPage } from './plan';
+import { routes } from '../app.routes';
 
 const user: AdminUser = { id: 'u1', name: 'Demo', email: 'demo@x.com', role: 'customer', plan_id: 'p1', plan_name: 'Fiber 50 GB',
   balance: 5, active: true, created_at: '', phone: null, address: null, city: null, install_status: null,
@@ -101,5 +102,15 @@ describe('D11: applying when no plans are for sale', () => {
     const fixture = TestBed.createComponent(Apply);
     await fixture.whenStable();
     expect(fixture.nativeElement.textContent).toContain('No plans are available right now');
+  });
+});
+
+describe('D14: the bare site address', () => {
+  it('goes to a real page instead of an empty one', async () => {
+    localStorage.clear();
+    TestBed.configureTestingModule({ providers: [provideRouter(routes)] });
+    const router = TestBed.inject(Router);
+    await router.navigateByUrl('/');
+    expect(router.url).toBe('/login'); // '/' → /dashboard → signed out → /login
   });
 });
