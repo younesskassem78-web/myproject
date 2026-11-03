@@ -305,12 +305,18 @@ test('speed test runs and is saved to history', async ({ page }) => {
   await expect(page.locator('tbody tr')).toHaveCount(before + 1);
 });
 
-test('forgot password asks for the code without revealing accounts', async ({ page }) => {
-  for (const email of [DEMO.email, 'nobody-here@example.com']) {
-    await page.goto('/forgot');
-    await page.getByLabel('Email').fill(email);
-    await page.getByRole('button', { name: 'Send code' }).click();
-    await expect(page.getByText('Check your email')).toBeVisible();
-    await expect(page.locator('.demo-code')).toHaveCount(0);  // reset codes are never shown on screen
-  }
+test('forgot password: unknown email is refused; code is checked before the new password', async ({ page }) => {
+  await page.goto('/forgot');
+  await page.getByLabel('Email').fill('nobody-here@example.com');
+  await page.getByRole('button', { name: 'Send code' }).click();
+  await expect(page.getByRole('alert')).toContainText('No active MyTerra account');
+
+  await page.getByLabel('Email').fill(DEMO.email);
+  await page.getByRole('button', { name: 'Send code' }).click();
+  await expect(page.getByText('Check your email')).toBeVisible();
+  await expect(page.locator('.demo-code')).toHaveCount(0);  // reset codes are never shown on screen
+  await expect(page.getByLabel('New password')).toHaveCount(0);  // password comes after the code
+  await page.getByLabel('Code').fill('000000');
+  await page.getByRole('button', { name: 'Continue' }).click();
+  await expect(page.getByRole('alert')).toContainText('Wrong code');
 });

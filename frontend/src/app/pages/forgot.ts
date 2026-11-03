@@ -22,15 +22,24 @@ import { errorText } from '../core/errors';
             </form>
           }
           @case ('code') {
-            <form (ngSubmit)="reset()">
+            <form (ngSubmit)="check()">
               <h1>Check your email</h1>
-              <p class="muted">If {{ email }} has a MyTerra account, a code is on its way. It expires in 10 minutes.</p>
+              <p class="muted">We sent a 6-digit code to {{ email }}. It expires in 10 minutes. Not there? Check your spam folder.</p>
               <label>Code <input name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" [(ngModel)]="code" /></label>
+              @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
+              <button class="btn" type="submit" [disabled]="busy()">{{ busy() ? 'Checking…' : 'Continue' }}</button>
+              <button class="link-btn" type="button" (click)="back()">Use a different email</button>
+            </form>
+          }
+          @case ('password') {
+            <form (ngSubmit)="reset()">
+              <h1>Choose a new password</h1>
+              <p class="muted">For {{ email }}.</p>
               <label>New password <input name="password" type="password" autocomplete="new-password" [(ngModel)]="password" />
                 <span class="hint">At least 8 characters.</span></label>
               @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
               <button class="btn" type="submit" [disabled]="busy()">{{ busy() ? 'Saving…' : 'Set new password' }}</button>
-              <button class="link-btn" type="button" (click)="step.set('email')">Use a different email</button>
+              <button class="link-btn" type="button" (click)="back()">Start again</button>
             </form>
           }
           @case ('done') {
@@ -47,7 +56,7 @@ import { errorText } from '../core/errors';
 })
 export class Forgot {
   private api = inject(ApiService);
-  step = signal<'email' | 'code' | 'done'>('email');
+  step = signal<'email' | 'code' | 'password' | 'done'>('email');
   email = '';
   code = '';
   password = '';
@@ -65,8 +74,24 @@ export class Forgot {
     });
   }
 
-  reset() {
+  check() {
     if (!/^\d{6}$/.test(this.code.trim())) { this.error.set('Enter the 6-digit code'); return; }
+    this.busy.set(true);
+    this.error.set('');
+    this.api.checkResetCode(this.email.trim(), this.code.trim()).subscribe({
+      next: () => { this.step.set('password'); this.busy.set(false); },
+      error: e => { this.error.set(errorText(e)); this.busy.set(false); },
+    });
+  }
+
+  back() {
+    this.code = '';
+    this.password = '';
+    this.error.set('');
+    this.step.set('email');
+  }
+
+  reset() {
     if (this.password.length < 8) { this.error.set('Choose a password with at least 8 characters'); return; }
     this.busy.set(true);
     this.error.set('');

@@ -173,7 +173,7 @@ def _issue_code(conn, channel: str, target: str, send) -> str:
     return code
 
 
-def _check_code(conn, channel: str, target: str, code: str) -> UUID:
+def _check_code(conn, channel: str, target: str, code: str, mark: bool = True) -> UUID:
     row = conn.execute("select * from verifications where channel = %s and target = %s and used_at is null "
                        "order by created_at desc limit 1", (channel, target)).fetchone()
     if not row:
@@ -187,7 +187,8 @@ def _check_code(conn, channel: str, target: str, code: str) -> UUID:
     if not hmac.compare_digest(row["code_hash"], _code_hash(row["id"], code)):
         conn.execute("update verifications set attempts = attempts + 1 where id = %s", (row["id"],))
         raise HTTPException(400, "Wrong code")
-    conn.execute("update verifications set verified_at = now() where id = %s", (row["id"],))
+    if mark:
+        conn.execute("update verifications set verified_at = now() where id = %s", (row["id"],))
     return row["id"]
 
 
@@ -216,8 +217,11 @@ class Forgot(BaseModel):
     email: Email
 
 
-class Reset(Forgot):
+class ResetCheck(Forgot):
     code: Annotated[str, StringConstraints(strip_whitespace=True, pattern=r"^\d{6}$")]
+
+
+class Reset(ResetCheck):
     password: Password
 
 
@@ -228,15 +232,24 @@ def _reset_target(email: str) -> str:
 
 @router.post("/api/password/forgot")
 def forgot(body: Forgot, conn: DB):
-    # Same answer whether or not the account exists, so this can't be used to discover customers.
-    if conn.execute("select 1 from users where email = %s and active", (body.email,)).fetchone():
-        try:
-            _issue_code(conn, "email", _reset_target(body.email),
-                        lambda text: notify.send_email(body.email, "Reset your MyTerra password", text))
-        except HTTPException as e:
-            if e.status_code != 429:
-                raise
+    # Product choice: say plainly when no account matches (like most ISPs), at the cost of revealing who is a customer.
+    if not conn.execute("select 1 from users where email = %s and active", (body.email,)).fetchone():
+        raise HTTPException(404, "No active MyTerra account uses this email. Check the spelling, or apply for an account.")
+    try:
+        _issue_code(conn, "email", _reset_target(body.email),
+                    lambda text: notify.send_email(body.email, "Reset your MyTerra password", text))
+    except HTTPException as e:
+        if e.status_code != 429:  # a code was sent less than a minute ago: the one already sent still works
+            raise
     return {"sent": True}
+
+
+@router.post("/api/password/check")
+def check_reset_code(body: ResetCheck, conn: DB):
+    # Lets the page confirm the code before asking for a new password. Wrong tries still count,
+    # and the code is not marked as verified, so /password/reset checks it again in full.
+    _check_code(conn, "email", _reset_target(body.email), body.code, mark=False)
+    return {"ok": True}
 
 
 @router.post("/api/password/reset")

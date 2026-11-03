@@ -29,6 +29,7 @@ export class ApiService {
     return this.http.post<{ verification_id: string }>(`${API}/verify/check`, { channel, target, code });
   }
   forgotPassword(email: string) { return this.http.post(`${API}/password/forgot`, { email }); }
+  checkResetCode(email: string, code: string) { return this.http.post(`${API}/password/check`, { email, code }); }
   resetPassword(email: string, code: string, password: string) {
     return this.http.post(`${API}/password/reset`, { email, code, password });
   }

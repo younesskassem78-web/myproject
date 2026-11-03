@@ -77,10 +77,11 @@ def test_forgot_and_reset_password(client, auth_headers):
     assert client.post("/api/login", json={"email": "demo@myterra.app", "password": "brandnew123"}).status_code == 200
 
 
-def test_forgot_password_does_not_reveal_accounts(client):
+def test_forgot_password_says_when_no_account_matches(client):
     before = len(notify.OUTBOX)
-    assert client.post("/api/password/forgot", json={"email": "nobody@x.com"}).status_code == 200
-    assert len(notify.OUTBOX) == before
+    r = client.post("/api/password/forgot", json={"email": "nobody@x.com"})
+    assert r.status_code == 404 and "No active MyTerra account" in r.json()["detail"]
+    assert len(notify.OUTBOX) == before  # nothing sent
 
 
 def test_reset_with_wrong_code(client):
@@ -112,3 +113,27 @@ def test_public_code_endpoints_cannot_touch_reset_codes(client):
     for path, body in (("/api/verify/send", {"channel": "email", "target": "reset:demo@myterra.app"}),
                        ("/api/verify/check", {"channel": "email", "target": "reset:demo@myterra.app", "code": "123456"})):
         assert client.post(path, json=body).status_code == 422
+
+
+def reset_code():
+    return re.search(r"\b(\d{6})\b", notify.OUTBOX[-1]["body"]).group(1)
+
+
+def test_reset_code_is_checked_before_the_new_password(client):
+    client.post("/api/password/forgot", json={"email": "demo@myterra.app"})
+    code = reset_code()
+    email = {"email": "demo@myterra.app"}
+    assert client.post("/api/password/check", json={**email, "code": "000000"}).status_code == 400
+    assert client.post("/api/password/check", json={**email, "code": code}).status_code == 200
+    # checking doesn't unlock the reset: a wrong code is still refused, the right one still works
+    assert client.post("/api/password/reset", json={**email, "code": "111111", "password": "brandnew123"}).status_code == 400
+    assert client.post("/api/password/reset", json={**email, "code": code, "password": "brandnew123"}).status_code == 200
+    assert client.post("/api/password/check", json={**email, "code": code}).status_code == 400  # used up
+
+
+def test_reset_code_check_counts_wrong_tries(client):
+    client.post("/api/password/forgot", json={"email": "demo@myterra.app"})
+    for _ in range(5):
+        client.post("/api/password/check", json={"email": "demo@myterra.app", "code": "000000"})
+    r = client.post("/api/password/check", json={"email": "demo@myterra.app", "code": reset_code()})
+    assert r.status_code == 400 and "Too many" in r.json()["detail"]
