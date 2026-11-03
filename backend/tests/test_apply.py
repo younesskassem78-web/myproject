@@ -28,8 +28,6 @@ def form(client, plan_id, email="new@x.com", phone="+96170123456", **over):
     }
     if "email_verification_id" not in over:
         body["email_verification_id"] = verify(client, "email", email)
-    if "phone_verification_id" not in over:
-        body["phone_verification_id"] = verify(client, "sms", phone)
     for k, v in over.items():
         body[k] = v
     return body
@@ -169,7 +167,9 @@ def test_reject_emails_refund(client, plan_id, admin):
 
 
 def test_cannot_apply_with_existing_account_email(client, plan_id):
-    assert apply(client, plan_id, email="demo@myterra.app").status_code == 409
+    # the code step already refuses this email; the final check still holds if that step is skipped
+    fake = "00000000-0000-0000-0000-000000000000"
+    assert apply(client, plan_id, email="demo@myterra.app", email_verification_id=fake).status_code == 409
 
 
 def test_cannot_apply_twice_while_pending(client, plan_id):
@@ -206,3 +206,12 @@ def test_no_demo_code_when_email_is_live(client, monkeypatch):
 
 def test_password_reset_never_shows_a_code(client):
     assert client.post("/api/password/forgot", json={"email": "demo@myterra.app"}).json() == {"sent": True}
+
+
+def test_phone_format_is_checked_without_a_code(client, plan_id):
+    assert apply(client, plan_id, phone="12345").status_code == 422
+
+
+def test_existing_account_is_told_at_the_email_code_step(client):
+    r = client.post("/api/verify/send", json={"channel": "email", "target": "demo@myterra.app"})
+    assert r.status_code == 409 and "already exists" in r.json()["detail"]

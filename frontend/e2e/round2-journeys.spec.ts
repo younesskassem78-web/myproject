@@ -23,26 +23,34 @@ test('sign-up: apply with codes and payment -> admin approves -> customer signs 
   const email = `${unique('new')}@example.com`;
   const install = new Date(Date.now() + 5 * 864e5).toISOString().slice(0, 10);
   await page.goto('/apply');
+  const next = () => page.getByRole('button', { name: 'Continue', exact: true }).click();
+  // 1. plan
+  await next();
+  await expect(page.getByRole('alert')).toHaveText('Choose a plan');  // can't skip a step
+  await page.locator('.plan-option', { hasText: 'Fiber 50 GB' }).click();
+  await next();
+  // 2. details: no code box here, required fields are marked
+  await expect(page.locator('.req').first()).toBeVisible();
   await page.locator('input[name=name]').fill('Rana Test');
-  const emailField = page.locator('app-verify-field[channel=email]');
-  await emailField.locator('input').first().fill(email);
-  await emailField.getByRole('button', { name: 'Send code' }).click();
-  await emailField.getByRole('button', { name: 'Use this code' }).click();
-  await expect(emailField.getByText('Verified')).toBeVisible();
-  const phoneField = page.locator('app-verify-field[channel=sms]');
-  await phoneField.locator('input').first().fill(`+9617${Math.floor(1e6 + Math.random() * 8e6)}`);
-  await phoneField.getByRole('button', { name: 'Send code' }).click();
-  await phoneField.getByRole('button', { name: 'Use this code' }).click();
-  await expect(phoneField.getByText('Verified')).toBeVisible();
+  await page.locator('input[name=email]').fill(email);
+  await page.locator('input[name=phone]').fill(`+9617${Math.floor(1e6 + Math.random() * 8e6)}`);
   await page.locator('input[name=password]').fill('rana12345');
   await page.locator('input[name=birth]').fill('1994-03-02');
   await page.locator('input[name=idn]').fill('LB998877');
+  await next();
+  // 3. address
   await page.locator('input[name=city]').fill('Beirut');
   await page.locator('input[name=street]').fill('Verdun St, Bldg 9');
   await page.locator('input[name=install]').fill(install);
-  await page.locator('.plan-option', { hasText: 'Fiber 50 GB' }).click();
+  await next();
+  // 4. email code on its own step (the phone gets no code)
+  await expect(page.getByText(`We sent a 6-digit code to ${email}`)).toBeVisible();
+  await page.getByRole('button', { name: 'Use this code' }).click();
+  await page.getByRole('button', { name: 'Verify and continue' }).click();
+  // 5. review and pay
+  await expect(page.locator('.review')).toContainText('Verdun St, Bldg 9');
   await page.locator('input[name=terms]').check();
-  await page.getByRole('button', { name: 'Continue to payment' }).click();
+  await page.getByRole('button', { name: /^Pay .* and send application$/ }).click();
   await payInDialog(page);
   await expect(page.getByText('Application sent')).toBeVisible();
 

@@ -219,10 +219,6 @@ form { display: grid; gap: 1rem; }
 .step { display: inline-grid; place-items: center; width: 1.75rem; height: 1.75rem; border-radius: 50%; background: var(--amber); color: var(--amber-ink); font-size: 0.9375rem; }
 .two { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
 .optional { font-weight: 400; color: var(--muted); }
-.verify { display: grid; gap: 0.5rem; }
-.verify-row { display: flex; gap: 0.5rem; align-items: center; }
-.verify-row input { flex: 1; }
-.verify-row .btn { white-space: nowrap; }
 .verified { color: var(--pine); font-weight: 700; white-space: nowrap; padding: 0 0.5rem; }
 .verified::before { content: '✓ '; }
 .plans { display: grid; gap: 0.5rem; }
@@ -232,6 +228,23 @@ form { display: grid; gap: 1rem; }
 }
 .plan-option:has(input:checked) { border-color: var(--pine); box-shadow: 0 0 0 3px rgb(29 107 88 / 0.2); }
 .plan-option input { width: auto; accent-color: var(--pine); }
+.plan-text { display: grid; flex: 1; }
+.plan-price { font: 700 1.25rem var(--display); white-space: nowrap; }
+.plan-price small { font-size: 0.875rem; font-weight: 400; color: var(--muted); }
+.req { color: var(--danger); font-weight: 700; }
+.steps.apply-steps { grid-template-columns: repeat(5, 1fr); margin: 1.5rem 0 0.5rem; }
+.apply-form form { display: grid; gap: 1rem; }
+.apply-form .two > label { align-content: start; }
+.step-nav { display: flex; justify-content: space-between; gap: 0.75rem; }
+.step-nav .btn:only-child { margin-left: auto; }
+.btn.loading { display: inline-flex; align-items: center; gap: 0.5rem; }
+.btn.loading::before { content: ''; width: 1em; height: 1em; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; animation: spin 0.7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .btn.loading::before { animation-duration: 2s; } }
+.review { display: grid; gap: 0; margin: 0; }
+.review > div { display: grid; grid-template-columns: 7rem 1fr auto; gap: 0.75rem; padding: 0.85rem 0; border-bottom: 1px solid var(--line); }
+.review dt { font-weight: 700; }
+.review dd { margin: 0; }
 
 /* ============ Customer pages ============ */
 .usage-hero { display: grid; gap: 0.9rem; margin-bottom: 2rem; }
@@ -424,6 +437,9 @@ dialog.pay .two { grid-template-columns: 1fr 1fr; }
 }
 @media (max-width: 600px) {
   .two { grid-template-columns: 1fr; }
+  .apply-steps li:not([aria-current]) span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .review > div { grid-template-columns: 1fr auto; }
+  .review dd { grid-column: 1 / -1; grid-row: 2; }
   .inline-form .wide { grid-column: 1 / -1; }
   .msg { max-width: 100%; }
   .topup { grid-template-columns: 1fr; }

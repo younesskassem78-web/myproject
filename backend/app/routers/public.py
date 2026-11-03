@@ -39,8 +39,7 @@ class Apply(BaseModel):
     plan_id: UUID
     accept_terms: bool
     card: Card
-    email_verification_id: UUID
-    phone_verification_id: UUID
+    email_verification_id: UUID  # only the email is verified: sign-in and approval go there; the phone is for the technician
 
     @field_validator("birth_date")
     @classmethod
@@ -195,6 +194,9 @@ def _check_code(conn, channel: str, target: str, code: str, mark: bool = True) -
 @router.post("/api/verify/send")
 def verify_send(body: VerifySend, conn: DB):
     if body.channel == "email":
+        # Sign-up only: tell people with an account now, not after they've filled in everything and paid.
+        if conn.execute("select 1 from users where email = %s", (body.target,)).fetchone():
+            raise HTTPException(409, "An account with this email already exists. Sign in, or reset your password.")
         code = _issue_code(conn, "email", body.target,
                            lambda text: notify.send_email(body.target, "Your MyTerra verification code", text))
         live = notify.email_is_live()
@@ -283,9 +285,8 @@ def apply(body: Apply, conn: DB):
         raise HTTPException(422, "Choose a plan from the list")
     if conn.execute("select 1 from users where email = %s", (body.email,)).fetchone():
         raise HTTPException(409, "An account with this email already exists")
-    with conn.transaction():  # a failed step below gives the verification codes back
+    with conn.transaction():  # a failed step below gives the verification code back
         _use_verification(conn, body.email_verification_id, "email", body.email)
-        _use_verification(conn, body.phone_verification_id, "sms", body.phone)
         # Fake payment: nothing is charged and only the brand and last 4 digits are stored.
         if body.card.number == DECLINED_TEST_CARD:
             raise HTTPException(402, "Your card was declined. Try another card.")

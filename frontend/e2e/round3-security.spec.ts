@@ -130,14 +130,14 @@ test('concurrent duplicate requests do not create duplicates', async () => {
   const email = `twice${Date.now()}@example.com`;
   const phone = `+9617${Date.now() % 10_000_000}`;
   const codes: string[] = [];
-  for (const [channel, target] of [['email', email], ['sms', phone]] as const) {
+  for (const [channel, target] of [['email', email]] as const) {
     const sent = await (await anon.post('verify/send', { data: { channel, target } })).json();
     codes.push((await (await anon.post('verify/check', { data: { channel, target, code: sent.demo_code } })).json()).verification_id);
   }
   const plan = (await (await anon.get('plans')).json())[0].id;
   const body = { name: 'Twice', email, phone, password: 'twice12345', birth_date: '1990-01-01',
     id_number: 'LB12345', city: 'Beirut', street: 'X', install_date: new Date(Date.now() + 3 * 864e5).toISOString().slice(0, 10),
-    plan_id: plan, accept_terms: true, card: CARD, email_verification_id: codes[0], phone_verification_id: codes[1] };
+    plan_id: plan, accept_terms: true, card: CARD, email_verification_id: codes[0] };
   const results = await Promise.all([anon.post('apply', { data: body }), anon.post('apply', { data: body })]);
   const statuses = results.map(r => r.status()).sort();
   expect(statuses[0]).toBe(201);
