@@ -6,7 +6,7 @@ import { Apply } from './apply';
 
 const card = { holder: 'Ali', number: '4242424242424242', expiry: '12/30', cvc: '123' };
 const details = {
-  name: 'Ali', email: 'Ali@X.com', phone: '+961 70 123 456', password: 'secret123', birth_date: '1995-04-12',
+  name: 'Ali', email: 'Ali@X.com', phone: '70 123 456', password: 'secret123', birth_date: '1995-04-12',
   id_number: 'LB12345', city: 'Beirut', street: 'Hamra St', install_date: '', plan_id: 'p1',
 };
 
@@ -55,6 +55,19 @@ describe('Apply (step by step)', () => {
     expect(fixture.nativeElement.textContent).toContain('(optional)');
   });
 
+  it('adds +961 to local numbers and keeps international ones', async () => {
+    const { c } = await setup();
+    for (const [typed, full] of [['70 123 456', '+96170123456'], ['03 123 456', '+9613123456'],
+      ['+33 6 12 34 56 78', '+33612345678'], ['0033612345678', '+33612345678']]) {
+      c.form.phone = typed;
+      expect(c.phone()).toBe(full);
+    }
+    c.go('details');
+    c.form.phone = '70 12';
+    c.next();
+    expect(c.step()).toBe('details');
+  });
+
   it('stays on a step until it is complete', async () => {
     const { fixture, c } = await setup();
     c.go('details');
@@ -62,7 +75,7 @@ describe('Apply (step by step)', () => {
     c.next();
     await fixture.whenStable();
     expect(c.step()).toBe('details');
-    expect(fixture.nativeElement.textContent).toContain('country code');
+    expect(fixture.nativeElement.textContent).toContain('like 70 123 456');
   });
 
   it('verifies only the email, on its own step, then shows the review', async () => {
@@ -106,7 +119,7 @@ describe('Apply (step by step)', () => {
     const { c } = await toReview();
     c.payWith(card).subscribe();
     expect(api.apply).toHaveBeenCalledWith(expect.objectContaining({
-      email: 'ali@x.com', email_verification_id: 've', plan_id: 'p1', card,
+      email: 'ali@x.com', phone: '+96170123456', email_verification_id: 've', plan_id: 'p1', card,
     }));
     expect(api.apply.mock.calls[0][0]).not.toHaveProperty('phone_verification_id');
   });

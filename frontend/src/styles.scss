@@ -232,6 +232,10 @@ form { display: grid; gap: 1rem; }
 .plan-price { font: 700 1.25rem var(--display); white-space: nowrap; }
 .plan-price small { font-size: 0.875rem; font-weight: 400; color: var(--muted); }
 .req { color: var(--danger); font-weight: 700; }
+.phone-input { display: flex; align-items: stretch; }
+.phone-input .prefix { display: grid; place-items: center; padding: 0 0.75rem; border: 1px solid var(--line); border-right: 0; border-radius: 8px 0 0 8px; background: var(--surface-2); font-weight: 600; }
+.phone-input .prefix + input { border-top-left-radius: 0; border-bottom-left-radius: 0; }
+.phone-input input { flex: 1; min-width: 0; }
 .steps.apply-steps { grid-template-columns: repeat(5, 1fr); margin: 1.5rem 0 0.5rem; }
 .apply-form form { display: grid; gap: 1rem; }
 .apply-form .two > label { align-content: start; }

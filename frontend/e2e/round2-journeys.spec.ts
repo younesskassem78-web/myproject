@@ -33,7 +33,7 @@ test('sign-up: apply with codes and payment -> admin approves -> customer signs 
   await expect(page.locator('.req').first()).toBeVisible();
   await page.locator('input[name=name]').fill('Rana Test');
   await page.locator('input[name=email]').fill(email);
-  await page.locator('input[name=phone]').fill(`+9617${Math.floor(1e6 + Math.random() * 8e6)}`);
+  await page.locator('input[name=phone]').fill(`70 ${Math.floor(100000 + Math.random() * 899999)}`);  // +961 is added for you
   await page.locator('input[name=password]').fill('rana12345');
   await page.locator('input[name=birth]').fill('1994-03-02');
   await page.locator('input[name=idn]').fill('LB998877');

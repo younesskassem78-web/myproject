@@ -84,8 +84,11 @@ export const STEPS: { id: Step; label: string }[] = [
                     <span class="hint">We’ll send a code to check it. Your sign-in and bills go here.</span>
                   </label>
                   <label><span>Mobile number <span class="req" aria-hidden="true">*</span></span>
-                    <input name="phone" type="tel" autocomplete="tel" placeholder="+961 70 123 456" required [(ngModel)]="form.phone" />
-                    <span class="hint">With country code. The technician calls this number on installation day.</span>
+                    <span class="phone-input">
+                      @if (!form.phone.trim().startsWith('+')) { <span class="prefix" aria-hidden="true">+961</span> }
+                      <input name="phone" type="tel" autocomplete="tel-national" placeholder="70 123 456" required [(ngModel)]="form.phone" />
+                    </span>
+                    <span class="hint">The technician calls this number on installation day. Not a Lebanese number? Start with + and the country code.</span>
                   </label>
                   <label><span>Password <span class="req" aria-hidden="true">*</span></span>
                     <input name="password" type="password" autocomplete="new-password" required [(ngModel)]="form.password" />
@@ -157,7 +160,7 @@ export const STEPS: { id: Step; label: string }[] = [
                   <dl class="review">
                     <div><dt>Plan</dt><dd>{{ plan()?.name }}, {{ plan()?.price | currency: 'USD' : 'symbol' : '1.0-2' }}/month</dd>
                       <button type="button" class="link-btn" (click)="go('plan')">Edit</button></div>
-                    <div><dt>You</dt><dd>{{ form.name }}<br />{{ form.email }} <span class="verified">Verified</span><br />{{ form.phone }}</dd>
+                    <div><dt>You</dt><dd>{{ form.name }}<br />{{ form.email }} <span class="verified">Verified</span><br />{{ phone() }}</dd>
                       <button type="button" class="link-btn" (click)="go('details')">Edit</button></div>
                     <div><dt>Installation</dt>
                       <dd>{{ form.street }}{{ form.apartment ? ', ' + form.apartment : '' }}, {{ form.city }}<br />on {{ form.install_date }}</dd>
@@ -212,6 +215,13 @@ export class Apply implements OnInit {
   index() { return STEPS.findIndex(s => s.id === this.step()); }
   plan() { return this.plans().find(p => p.id === this.form.plan_id); }
   email() { return this.form.email.trim().toLowerCase(); }
+  /** Lebanese numbers by default: "70 123 456" or "03 123 456" become +961…; a number typed with + or 00 is kept as is. */
+  phone() {
+    const raw = this.form.phone.replace(/[\s\-()]/g, '');
+    if (raw.startsWith('+')) return raw;
+    if (raw.startsWith('00')) return '+' + raw.slice(2);
+    return '+961' + raw.replace(/^0/, '');
+  }
   verified() { return this.verification()?.email === this.email(); }
   nextLabel() {
     if (this.step() === 'verify') return this.busy() ? 'Verifying…' : 'Verify and continue';
@@ -235,7 +245,8 @@ export class Apply implements OnInit {
       case 'details':
         if (!f.name.trim()) return 'Enter your full name';
         if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(f.email.trim())) return 'Enter a valid email';
-        if (!/^\+[1-9]\d{7,14}$/.test(f.phone.replace(/[\s\-()]/g, ''))) return 'Enter your mobile number with the country code, like +961 70 123 456';
+        // Lebanese numbers have 7 or 8 digits after +961 (03 123 456, 70 123 456)
+        if (!/^\+[1-9]\d{7,14}$/.test(this.phone()) || /^\+961(?!\d{7,8}$)/.test(this.phone())) return 'Enter your mobile number, like 70 123 456';
         if (f.password.length < 8) return 'Choose a password with at least 8 characters';
         if (!f.birth_date) return 'Enter your date of birth';
         if (f.birth_date > this.adultMax) return 'You must be 18 or older to apply';
@@ -301,7 +312,7 @@ export class Apply implements OnInit {
   payWith = (card: CardDetails) => this.api.apply({
     ...this.form,
     email: this.email(),
-    phone: this.form.phone.trim(),
+    phone: this.phone(),
     email_verification_id: this.verification()!.id,
     card,
   });
