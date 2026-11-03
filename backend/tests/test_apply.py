@@ -198,8 +198,8 @@ def test_no_demo_code_in_production(client, monkeypatch):
 
 
 def test_no_demo_code_when_email_is_live(client, monkeypatch):
-    monkeypatch.setenv("GMAIL_USER", "x@gmail.com")
-    monkeypatch.setenv("GMAIL_APP_PASSWORD", "pw")
+    for k, v in (("SMTP_HOST", "smtp.test"), ("SMTP_USER", "x"), ("SMTP_PASSWORD", "pw")):
+        monkeypatch.setenv(k, v)
     monkeypatch.setattr(notify, "send_email", lambda *a: None)  # don't really send
     assert "demo_code" not in client.post("/api/verify/send", json={"channel": "email", "target": "a@b.co"}).json()
 

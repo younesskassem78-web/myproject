@@ -2,7 +2,7 @@
 
 A self-service portal for a home internet provider. Customers manage their own service instead of calling support; staff run the business from an admin console.
 
-**Stack:** Angular 22 + Chart.js · Python 3.12 + FastAPI · PostgreSQL 16 (UUID keys) · Gmail SMTP (email) · Twilio (SMS)
+**Stack:** Angular 22 + Chart.js · Python 3.12 + FastAPI · PostgreSQL 16 (UUID keys) · SMTP email (Brevo) · Twilio (SMS)
 
 ## What it does
 
@@ -69,7 +69,7 @@ Demo data is only created when `DEMO_DATA` is not `false`. **Never deploy with d
 
 ### Email and SMS
 Without credentials MyTerra runs in **demo mode**: codes and emails are printed in the backend window. To send for real, add to `backend/.env`:
-- **Gmail** (free, ~500/day): turn on 2-Step Verification, create an app password at https://myaccount.google.com/apppasswords, set `GMAIL_USER` and `GMAIL_APP_PASSWORD`.
+- **Email, Brevo** (free, 300/day, no domain needed): sign up at https://www.brevo.com, verify your address under *Senders, domains & IPs*, create an SMTP key under *SMTP & API*, then set `SMTP_HOST=smtp-relay.brevo.com`, `SMTP_PORT=587`, `SMTP_USER` (the SMTP login Brevo shows), `SMTP_PASSWORD` (the SMTP key) and `EMAIL_FROM` (your verified address). Any other SMTP service works the same way; for Gmail use `smtp.gmail.com`, port `465` and an app password.
 - **Twilio trial** (free credit, only to numbers you verify in Twilio): set `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM`.
 
 ## Configuration

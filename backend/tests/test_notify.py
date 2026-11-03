@@ -1,14 +1,14 @@
-"""The real Gmail and Twilio paths, with the network replaced by fakes (no message leaves the machine)."""
+"""The real email (SMTP) and Twilio paths, with the network replaced by fakes (no message leaves the machine)."""
 import pytest
 
 from app import notify
 
 
 class FakeSMTP:
-    sent = []
+    sent, calls = [], []
 
     def __init__(self, host, port, timeout):
-        assert (host, port) == ("smtp.gmail.com", 465)
+        FakeSMTP.calls.append(("connect", host, port))
 
     def __enter__(self):
         return self
@@ -16,23 +16,44 @@ class FakeSMTP:
     def __exit__(self, *a):
         return False
 
+    def starttls(self):
+        FakeSMTP.calls.append(("starttls",))
+
     def login(self, user, password):
-        assert " " not in password  # app passwords are pasted with spaces; they must be removed
-        FakeSMTP.user = user
+        assert " " not in password  # Gmail app passwords are pasted with spaces; they must be removed
+        FakeSMTP.calls.append(("login", user))
 
     def send_message(self, msg):
         FakeSMTP.sent.append(msg)
 
 
-def test_gmail_path(monkeypatch):
-    monkeypatch.setenv("GMAIL_USER", "shop@gmail.com")
-    monkeypatch.setenv("GMAIL_APP_PASSWORD", "abcd efgh ijkl mnop")
+@pytest.fixture
+def smtp(monkeypatch):
+    monkeypatch.setattr(notify.smtplib, "SMTP", FakeSMTP)
     monkeypatch.setattr(notify.smtplib, "SMTP_SSL", FakeSMTP)
     FakeSMTP.sent.clear()
+    FakeSMTP.calls.clear()
+    return FakeSMTP
+
+
+def test_brevo_path(monkeypatch, smtp):
+    for k, v in (("SMTP_HOST", "smtp-relay.brevo.com"), ("SMTP_PORT", "587"), ("SMTP_USER", "abc@smtp-brevo.com"),
+                 ("SMTP_PASSWORD", "xsmtpsib-key"), ("EMAIL_FROM", "shop@gmail.com")):
+        monkeypatch.setenv(k, v)
     notify.send_email("a@b.co", "Hello", "Body text")
-    msg = FakeSMTP.sent[0]
+    assert smtp.calls == [("connect", "smtp-relay.brevo.com", 587), ("starttls",), ("login", "abc@smtp-brevo.com")]
+    msg = smtp.sent[0]
     assert msg["To"] == "a@b.co" and msg["Subject"] == "Hello" and "shop@gmail.com" in msg["From"]
     assert notify.email_is_live() and not notify.OUTBOX  # real path, not demo
+
+
+def test_gmail_path(monkeypatch, smtp):
+    for k, v in (("SMTP_HOST", "smtp.gmail.com"), ("SMTP_PORT", "465"), ("SMTP_USER", "shop@gmail.com"),
+                 ("SMTP_PASSWORD", "abcd efgh ijkl mnop")):
+        monkeypatch.setenv(k, v)
+    notify.send_email("a@b.co", "Hello", "Body text")
+    assert ("starttls",) not in smtp.calls and smtp.calls[0] == ("connect", "smtp.gmail.com", 465)
+    assert "shop@gmail.com" in smtp.sent[0]["From"]  # sender defaults to the login
 
 
 class FakeResponse:

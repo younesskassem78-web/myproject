@@ -1,4 +1,4 @@
-"""Email (Gmail SMTP) and SMS (Twilio). Without credentials in .env, messages are only logged (demo mode)."""
+"""Email (any SMTP service: Brevo, Gmail, ...) and SMS (Twilio). Without settings, messages are only logged."""
 import logging
 import os
 import smtplib
@@ -15,8 +15,11 @@ def _demo(channel: str, to: str, subject: str, body: str) -> None:
     log.warning("DEMO %s to %s | %s | %s", channel.upper(), to, subject, body.replace("\n", " "))
 
 
+SMTP_KEYS = ("SMTP_HOST", "SMTP_USER", "SMTP_PASSWORD")
+
+
 def email_is_live() -> bool:
-    return bool(os.environ.get("GMAIL_USER") and os.environ.get("GMAIL_APP_PASSWORD"))
+    return all(os.environ.get(k) for k in SMTP_KEYS)
 
 
 def sms_is_live() -> bool:
@@ -24,14 +27,19 @@ def sms_is_live() -> bool:
 
 
 def send_email(to: str, subject: str, body: str) -> None:
-    user, password = os.environ.get("GMAIL_USER"), os.environ.get("GMAIL_APP_PASSWORD")
-    if not (user and password):
+    if not email_is_live():
         return _demo("email", to, subject, body)
+    host, user, password = (os.environ[k] for k in SMTP_KEYS)
+    port = int(os.environ.get("SMTP_PORT") or 587)
     msg = EmailMessage()
-    msg["From"], msg["To"], msg["Subject"] = f"MyTerra <{user}>", to, subject
+    # Brevo's login isn't a mailbox, so the sender is its own setting (a sender address verified in Brevo)
+    msg["From"], msg["To"], msg["Subject"] = f"MyTerra <{os.environ.get('EMAIL_FROM') or user}>", to, subject
     msg.set_content(body)
-    with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=15) as smtp:
-        smtp.login(user, password.replace(" ", ""))
+    # 465 = encrypted from the start (Gmail); 587 = upgrade with STARTTLS (Brevo and most others)
+    with (smtplib.SMTP_SSL(host, port, timeout=15) if port == 465 else smtplib.SMTP(host, port, timeout=15)) as smtp:
+        if port != 465:
+            smtp.starttls()
+        smtp.login(user, password.replace(" ", ""))  # Gmail app passwords are shown with spaces
         smtp.send_message(msg)
 
 

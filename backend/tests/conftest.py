@@ -16,7 +16,7 @@ from app.main import app  # noqa: E402
 @pytest.fixture(autouse=True)
 def _reset(monkeypatch):
     from app import notify
-    for key in ("GMAIL_USER", "GMAIL_APP_PASSWORD", "TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_FROM"):
+    for key in ("SMTP_HOST", "SMTP_USER", "SMTP_PASSWORD", "EMAIL_FROM", "TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_FROM"):
         monkeypatch.delenv(key, raising=False)  # tests never send real email or SMS
     notify.OUTBOX.clear()
     db.init(reset=True)
