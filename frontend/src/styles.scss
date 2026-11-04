@@ -330,7 +330,7 @@ form { display: grid; gap: 1rem; }
   .home-head .head-right { gap: 0.6rem; }
   .home-signin { display: none; } /* the hero has a Sign in button right below */
 }
-.lang-switch { display: inline-flex; justify-self: start; }
+.lang-switch { display: inline-flex; align-items: center; gap: 0.35rem; justify-self: start; }
 .lang-switch select { width: auto; padding: 0.3rem 0.5rem; font-size: 0.875rem; border-radius: 8px; }
 .apply-head .lang-switch select { background: transparent; color: #e6f1ee; border-color: rgb(230 241 238 / 0.4); }
 .apply-head .lang-switch option { color: initial; }

@@ -23,6 +23,7 @@ const PATHS: Record<string, string> = {
   plus: 'M12 5v14M5 12h14',
   chart: 'M4 20V10M10 20V4M16 20v-7M2 20h20',
   pause: 'M9 5v14M15 5v14',
+  globe: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z',
   play: 'M7 5l12 7-12 7z',
 };
 
