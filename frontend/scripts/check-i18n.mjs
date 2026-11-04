@@ -7,7 +7,7 @@ const read = p => readFileSync(new URL(p, APP), 'utf8');
 const norm = s => s.replace(/\\'/g, "'").replace(/\s+/g, ' ').replace(/’/g, "'").trim();
 
 const FILES = ['app.ts', 'shared/notification-bell.ts', 'shared/lang-switch.ts', 'shared/two-factor.ts', 'core/errors.ts',
-  ...'login apply forgot status dashboard billing invoice speed-test support ticket plan settings pay-dialog'.split(' ').map(f => `pages/${f}.ts`)];
+  ...'home login apply forgot status dashboard billing invoice speed-test support ticket plan settings pay-dialog'.split(' ').map(f => `pages/${f}.ts`)];
 // Shown as-is in every language: names, addresses, examples.
 const SKIP = new Set(['myterra', 'MyTerra Internet', 'you@example.com', 'support&#64;myterra.app', 'MM/YY']);
 
@@ -22,7 +22,7 @@ for (const f of FILES) {
   // (cond ? 'a' : 'b') | t  — the parentheses may contain calls like theme()
   for (const m of s.matchAll(/\{\{\s*\((.*?)\)\s*\|\s*t\b/g)) for (const lit of m[1].matchAll(new RegExp(SQ, 'g'))) add(lit[1]);
   for (const m of s.matchAll(/t\(this\.busy\(\) \? '([^']*)' : '([^']*)'\)/g)) { add(m[1]); add(m[2]); }
-  for (const m of s.matchAll(/label: '([^']*)'/g)) add(m[1]);
+  for (const m of s.matchAll(/[{,]\s*(?:label|title|text|q|a): '([^']*)'/g)) add(m[1]);
   for (const name of ['STATUS', 'KIND', 'STATUS_LABEL', 'CATEGORY_LABEL', 'OUTAGE_LABEL']) {
     const block = s.match(new RegExp(`\\b${name}\\b[^=\\n]*= \\{([\\s\\S]*?)\\};`));
     if (block) for (const lit of block[1].matchAll(/:\s*'([^']*)'/g)) add(lit[1]);

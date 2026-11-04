@@ -1,11 +1,12 @@
 import { Routes } from '@angular/router';
 import { adminGuard, customerGuard } from './core/auth';
+import { Home } from './pages/home';
 import { Login } from './pages/login';
 
 const page = (title: string) => `${title} | MyTerra`;
 
 export const routes: Routes = [
-  { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
+  { path: '', pathMatch: 'full', component: Home, title: 'MyTerra home internet: apply online, manage everything yourself' },
   { path: 'login', component: Login, title: page('Sign in') },
   { path: 'apply', loadComponent: () => import('./pages/apply').then(m => m.Apply), title: page('Apply') },
   { path: 'forgot', loadComponent: () => import('./pages/forgot').then(m => m.Forgot), title: page('Reset password') },

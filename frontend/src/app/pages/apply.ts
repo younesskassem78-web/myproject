@@ -32,7 +32,7 @@ export const STEPS: { id: Step; label: string }[] = [
   template: `
     <div class="apply">
       <header class="apply-head">
-        <a class="wordmark" routerLink="/login">{{ 'myterra' | t }}</a>
+        <a class="wordmark" routerLink="/">myterra</a>
         <span class="head-right"><app-lang-switch /><a routerLink="/login">{{ 'Sign in' | t }}</a></span>
       </header>
 
@@ -231,8 +231,13 @@ export class Apply implements OnInit {
   }
 
   ngOnInit() {
+    const chosen = new URLSearchParams(location.search).get('plan'); // from "Choose this plan" on the home page
     this.api.plans().subscribe({
-      next: p => { this.plans.set(p); this.plansLoaded.set(true); },
+      next: p => {
+        this.plans.set(p);
+        this.plansLoaded.set(true);
+        if (chosen && p.some(x => x.id === chosen)) this.form.plan_id = chosen;
+      },
       error: e => this.error.set(errorText(e)),
     });
   }

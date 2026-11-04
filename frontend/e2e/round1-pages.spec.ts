@@ -20,6 +20,7 @@ test.beforeAll(async () => {
 
 type Who = 'anon' | 'customer' | 'admin';
 const pages: { path: () => string; who: Who; expectText: string }[] = [
+  { path: () => '/', who: 'anon', expectText: 'Fast home internet you can run from your phone.' },
   { path: () => '/login', who: 'anon', expectText: 'Sign in' },
   { path: () => '/apply', who: 'anon', expectText: 'Apply for home internet' },
   { path: () => '/forgot', who: 'anon', expectText: 'Reset your password' },

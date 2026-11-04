@@ -20,7 +20,7 @@ const CUSTOMER_NAV: NavItem[] = [
   { path: '/plan', label: 'Plan', icon: 'layers' },
   { path: '/settings', label: 'Settings', icon: 'settings' },
 ];
-const PUBLIC_PAGE = /^\/(login|apply|status)(\?|$)/;
+const PUBLIC_PAGE = /^\/(login|apply|status)?([?#]|$)/;
 
 const ADMIN_NAV: NavItem[] = [
   { path: '/admin', label: 'Overview', icon: 'home', exact: true, area: 'overview' },
@@ -117,6 +117,6 @@ export class App {
 
   // Public pages (sign in, apply, password reset, status) use their own full-page layout.
   showShell() {
-    return !!this.auth.name() && !/^\/(login|apply|forgot|status)/.test(this.router.url);
+    return !!this.auth.name() && !/^\/(login|apply|forgot|status|[?#]|$)/.test(this.router.url);
   }
 }

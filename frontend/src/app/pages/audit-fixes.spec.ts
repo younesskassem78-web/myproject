@@ -124,11 +124,12 @@ describe('D11: applying when no plans are for sale', () => {
 });
 
 describe('D14: the bare site address', () => {
-  it('goes to a real page instead of an empty one', async () => {
+  it('is the public home page, not an empty one', async () => {
     localStorage.clear();
     TestBed.configureTestingModule({ providers: [provideRouter(routes)] });
     const router = TestBed.inject(Router);
     await router.navigateByUrl('/');
-    expect(router.url).toBe('/login'); // '/' → /dashboard → signed out → /login
+    expect(router.url).toBe('/');
+    expect(routes.find(r => r.path === '' && r.pathMatch === 'full')?.component?.name).toContain('Home');
   });
 });

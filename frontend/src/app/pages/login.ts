@@ -13,7 +13,7 @@ import { errorText } from '../core/errors';
   template: `
     <div class="login">
       <section class="login-brand">
-        <p class="wordmark">{{ 'myterra' | t }}</p>
+        <a class="wordmark" routerLink="/">myterra</a>
         <h1>{{ 'Your home internet, in one place.' | t }}</h1>
         <p>{{ 'Check your plan, watch your data, top up and get help without calling anyone.' | t }}</p>
       </section>

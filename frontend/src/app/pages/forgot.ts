@@ -11,7 +11,7 @@ import { errorText } from '../core/errors';
   imports: [TPipe, LangSwitch, FormsModule, RouterLink],
   template: `
     <div class="public-page">
-      <header class="apply-head"><a class="wordmark" routerLink="/login">{{ 'myterra' | t }}</a><span class="head-right"><app-lang-switch /><a routerLink="/login">{{ 'Sign in' | t }}</a></span></header>
+      <header class="apply-head"><a class="wordmark" routerLink="/">myterra</a><span class="head-right"><app-lang-switch /><a routerLink="/login">{{ 'Sign in' | t }}</a></span></header>
       <section class="narrow card">
         @switch (step()) {
           @case ('email') {

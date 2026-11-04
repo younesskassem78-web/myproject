@@ -19,7 +19,7 @@ export const OUTAGE_LABEL: Record<OutageStatus, string> = {
   template: `
     <div class="public-page">
       <header class="apply-head">
-        <a class="wordmark" routerLink="/login">{{ 'myterra' | t }}</a>
+        <a class="wordmark" routerLink="/">myterra</a>
         <span class="head-right"><app-lang-switch />
         <a [routerLink]="auth.isLoggedIn() ? (auth.isStaff() ? '/admin' : '/dashboard') : '/login'">
           {{ (auth.isLoggedIn() ? 'Back to my account' : 'Sign in') | t }}</a></span>

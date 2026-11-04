@@ -103,3 +103,13 @@ test('search engines: public pages indexable, private pages not', async ({ page,
   await expect(page.locator('meta[name=robots]')).toHaveAttribute('content', 'noindex, nofollow');
   await expect(page.locator('meta[name=description]')).toHaveAttribute('content', /MyTerra/);
 });
+
+test('home page: "Choose this plan" opens sign-up with that plan picked', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.locator('meta[name=robots]')).toHaveAttribute('content', 'index, follow');
+  const plan = page.locator('.home-plan').first();
+  const name = (await plan.locator('h3').textContent())!.trim();
+  await plan.getByRole('link', { name: 'Choose this plan' }).click();
+  await expect(page).toHaveURL(/\/apply\?plan=/);
+  await expect(page.locator('.plan-option', { hasText: name }).locator('input')).toBeChecked();
+});
