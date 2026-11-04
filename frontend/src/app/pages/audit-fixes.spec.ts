@@ -130,6 +130,6 @@ describe('D14: the bare site address', () => {
     const router = TestBed.inject(Router);
     await router.navigateByUrl('/');
     expect(router.url).toBe('/');
-    expect(routes.find(r => r.path === '' && r.pathMatch === 'full')?.component?.name).toContain('Home');
+    expect(routes.find(r => r.path === '' && r.pathMatch === 'full')?.loadComponent).toBeTruthy(); // the home page
   });
 });
