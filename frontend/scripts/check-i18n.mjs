@@ -20,9 +20,9 @@ for (const f of FILES) {
   for (const m of s.matchAll(new RegExp(`${SQ}\\s*\\|\\s*t\\b|${DQ}\\s*\\|\\s*t\\b`, 'g'))) add(m[1] ?? m[2]);
   for (const m of s.matchAll(new RegExp(`(?<![\\w.])t\\(\\s*(?:${SQ}|${DQ})`, 'g'))) add(m[1] ?? m[2]);
   // (cond ? 'a' : 'b') | t  — the parentheses may contain calls like theme()
-  for (const m of s.matchAll(/\{\{\s*\((.*?)\)\s*\|\s*t\b/g)) for (const lit of m[1].matchAll(new RegExp(SQ, 'g'))) add(lit[1]);
+  for (const m of s.matchAll(/\{\{\s*\(([\s\S]*?)\)\s*\|\s*t\b/g)) for (const lit of m[1].matchAll(new RegExp(SQ, 'g'))) add(lit[1]);
   for (const m of s.matchAll(/t\(this\.busy\(\) \? '([^']*)' : '([^']*)'\)/g)) { add(m[1]); add(m[2]); }
-  for (const m of s.matchAll(/[{,]\s*(?:label|title|text|q|a): '([^']*)'/g)) add(m[1]);
+  for (const m of s.matchAll(/[{,]\s*(?:label|title|text|q|a|alt): '([^']*)'/g)) add(m[1]);
   for (const name of ['STATUS', 'KIND', 'STATUS_LABEL', 'CATEGORY_LABEL', 'OUTAGE_LABEL']) {
     const block = s.match(new RegExp(`\\b${name}\\b[^=\\n]*= \\{([\\s\\S]*?)\\};`));
     if (block) for (const lit of block[1].matchAll(/:\s*'([^']*)'/g)) add(lit[1]);

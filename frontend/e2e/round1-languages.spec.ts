@@ -11,8 +11,8 @@ async function inLanguage(page: Page, lang: string) {
 }
 
 const CASES = [
-  { lang: 'ar', dir: 'rtl', login: 'تسجيل الدخول', dashboard: 'الاستهلاك اليومي', apply: 'اختر باقة' },
-  { lang: 'fr', dir: 'ltr', login: 'Se connecter', dashboard: 'Consommation par jour', apply: 'Choisissez un forfait' },
+  { lang: 'ar', dir: 'rtl', login: 'تسجيل الدخول', dashboard: 'الاستهلاك اليومي', apply: 'اختر باقة', home: 'إنترنت منزلي سريع تديره من هاتفك.' },
+  { lang: 'fr', dir: 'ltr', login: 'Se connecter', dashboard: 'Consommation par jour', apply: 'Choisissez un forfait', home: 'Un internet rapide à la maison, que vous gérez depuis votre téléphone.' },
 ];
 
 for (const c of CASES) {
@@ -21,7 +21,7 @@ for (const c of CASES) {
       await page.setViewportSize(viewport);
       const errors = watchErrors(page);
       await inLanguage(page, c.lang);
-      for (const [path, text] of [['/login', c.login], ['/apply', c.apply]] as const) {
+      for (const [path, text] of [['/', c.home], ['/login', c.login], ['/apply', c.apply]] as const) {
         await page.goto(path);
         await expect(page.locator('html')).toHaveAttribute('dir', c.dir);
         await expect(page.locator('html')).toHaveAttribute('lang', c.lang);

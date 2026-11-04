@@ -113,3 +113,24 @@ test('home page: "Choose this plan" opens sign-up with that plan picked', async 
   await expect(page).toHaveURL(/\/apply\?plan=/);
   await expect(page.locator('.plan-option', { hasText: name }).locator('input')).toBeChecked();
 });
+
+test('home page: photos can be dragged with the mouse and the plan finder recommends a real plan', async ({ page }) => {
+  await page.goto('/');
+  const carousel = page.locator('.carousel');
+  await carousel.scrollIntoViewIfNeeded();
+  const box = (await carousel.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  for (let i = 1; i <= 10; i++) await page.mouse.move(box.x + box.width / 2 - 45 * i, box.y + box.height / 2);
+  await page.mouse.up();
+  await expect(page.locator('.dot-btn').nth(1)).toHaveAttribute('aria-current', 'true');
+  await page.getByRole('button', { name: 'Next' }).click();
+  await expect(page.locator('.dot-btn').nth(2)).toHaveAttribute('aria-current', 'true');
+
+  const finder = page.locator('#finder');
+  await finder.getByText('5+').click();
+  await finder.getByText('Big downloads').click();
+  const plan = (await finder.locator('.finder-plan').textContent())!.trim();
+  await finder.getByRole('link', { name: `Choose ${plan}` }).click();
+  await expect(page.locator('.plan-option', { hasText: plan }).locator('input')).toBeChecked();
+});

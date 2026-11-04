@@ -228,6 +228,60 @@ form { display: grid; gap: 1rem; }
 .status-pill { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0.85rem; border-radius: 999px; background: rgb(255 255 255 / 0.08); color: #e6f1ee; font-size: 0.9375rem; font-weight: 600; text-decoration: none; }
 .status-pill .dot { width: 0.6rem; height: 0.6rem; border-radius: 50%; background: #5ad19b; box-shadow: 0 0 0 4px rgb(90 209 155 / 0.2); }
 .status-pill.warn .dot { background: var(--amber); box-shadow: 0 0 0 4px rgb(240 173 58 / 0.25); }
+.hero-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr); gap: clamp(2rem, 5vw, 4rem); align-items: center; max-width: 76rem; margin: 0 auto; }
+.hero-photo { position: relative; margin: 0; }
+.hero-photo img { display: block; width: 100%; height: auto; max-height: 34rem; object-fit: cover; border-radius: 28px 28px 28px 6px; }
+.hero-chip { position: absolute; inset-inline-start: -1.25rem; bottom: 1.5rem; display: grid; gap: 0.1rem; padding: 0.85rem 1.15rem;
+  background: var(--surface); color: var(--ink); border-radius: 16px; box-shadow: 0 12px 32px rgb(0 0 0 / 0.25); }
+.hero-chip strong { font: 800 1.75rem/1 var(--display); color: var(--pine); }
+.hero-chip span { font-size: 0.875rem; color: var(--muted); }
+.hero .fiber-line { max-width: 76rem; margin-inline: auto; }
+.section-head { display: flex; align-items: end; justify-content: space-between; gap: 1rem; }
+.section-head h2 { font-size: clamp(1.75rem, 3.5vw, 2.5rem); }
+.section-head p { margin: 0.25rem 0 0; }
+.carousel-arrows { display: flex; gap: 0.5rem; }
+.icon-btn.round { width: 2.75rem; height: 2.75rem; border-radius: 50%; border: 1.5px solid var(--line); background: var(--surface); color: var(--ink); }
+.icon-btn.round:disabled { opacity: 0.35; cursor: default; }
+.flip { transform: scaleX(-1); }
+/* Swipe on touch comes from native scroll-snap; the mouse drags the same scroll position */
+.carousel { display: grid; grid-auto-flow: column; grid-auto-columns: min(82%, 30rem); column-gap: 1.25rem; overflow-x: auto;
+  scroll-snap-type: x mandatory; overscroll-behavior-x: contain; scrollbar-width: none; padding-bottom: 0.25rem; cursor: grab; border-radius: 22px; }
+.carousel::-webkit-scrollbar { display: none; }
+.carousel.dragging { cursor: grabbing; scroll-snap-type: none; user-select: none; }
+.carousel:focus-visible { outline: 3px solid var(--amber); outline-offset: 4px; }
+.slide { scroll-snap-align: start; position: relative; border-radius: 22px; overflow: hidden; background: var(--pine-deep); color: #fff; aspect-ratio: 3 / 2; }
+.slide img { width: 100%; height: 100%; object-fit: cover; display: block; pointer-events: none; }
+.slide-text { position: absolute; inset: auto 0 0 0; padding: 3.5rem 1.25rem 1.1rem; background: linear-gradient(transparent, rgb(8 26 21 / 0.88)); }
+.slide-text h3 { color: #fff; font-size: 1.3rem; margin-bottom: 0.25rem; }
+.slide-text p { margin: 0; color: #e6f1ee; font-size: 0.975rem; }
+.dots { display: flex; justify-content: center; gap: 0.15rem; }
+/* each dot is a full 24px button (WCAG 2.2 target size); the visible dot is drawn inside */
+.dot-btn { display: grid; place-items: center; min-width: 24px; height: 24px; padding: 0; border: 0; background: none; cursor: pointer; }
+.dot-btn::before { content: ''; width: 0.65rem; height: 0.65rem; border-radius: 99px; background: var(--line); transition: width 0.2s; }
+.dot-btn.on { min-width: 2.25rem; }
+.dot-btn.on::before { width: 1.75rem; background: var(--pine); }
+@media (prefers-reduced-motion: reduce) { .dot-btn::before { transition: none; } }
+.finder-grid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 1.25rem; }
+.finder-controls { display: grid; gap: 1.25rem; padding: 1.5rem; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
+.finder fieldset { border: 0; margin: 0; padding: 0; display: grid; gap: 0.6rem; }
+.finder legend { font-weight: 700; margin-bottom: 0.5rem; padding: 0; }
+.seg, .chips { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.seg label, .chips label { position: relative; display: inline-flex; align-items: center; padding: 0.55rem 1rem; border-radius: 999px;
+  border: 1.5px solid var(--line); background: var(--bg); font-weight: 600; cursor: pointer; }
+.seg label.on, .chips label.on { border-color: var(--pine); background: var(--pine); color: var(--on-pine); }
+.seg input, .chips input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.seg label:has(input:focus-visible), .chips label:has(input:focus-visible) { outline: 3px solid var(--amber); outline-offset: 2px; }
+.finder-result { display: grid; gap: 0.5rem; align-content: center; justify-items: start; padding: 1.75rem; border-radius: var(--radius); background: var(--pine-deep); color: #e6f1ee; }
+.finder-result .muted { color: #b9d2ca; margin: 0; }
+.finder-result p { margin: 0; }
+.finder-plan { font: 800 clamp(1.75rem, 4vw, 2.5rem)/1.05 var(--display); color: #fff; }
+.finder-result .btn { margin-top: 0.75rem; }
+.value-note { color: var(--pine); font-weight: 700; }
+@media (max-width: 860px) {
+  .hero-grid, .finder-grid { grid-template-columns: 1fr; }
+  .hero-photo img { max-height: 22rem; border-radius: 22px; }
+  .hero-chip { inset-inline-start: 1rem; bottom: 1rem; }
+}
 /* The brand's fibre line: one pulse of light travels along it (the page's only motion) */
 .fiber-line { position: relative; height: 4px; margin-top: clamp(2.5rem, 6vw, 4rem); border-radius: 99px; background: rgb(255 255 255 / 0.12); overflow: hidden; }
 .fiber-line span { position: absolute; inset-block: 0; inset-inline-start: 0; width: 22%; border-radius: 99px;
