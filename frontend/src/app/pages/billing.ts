@@ -11,7 +11,7 @@ import { CardDetails, PayDialog } from './pay-dialog';
 type Pending = { kind: 'invoice'; invoice: Invoice } | { kind: 'topup'; amount: number } | { kind: 'autopay' };
 
 const STATUS: Record<string, string> = { unpaid: 'Unpaid', paid: 'Paid', overdue: 'Overdue', void: 'Void' };
-const KIND: Record<string, string> = { invoice: 'Bill payment', topup: 'Top-up', signup: 'First month' };
+const KIND: Record<string, string> = { invoice: 'Bill payment', topup: 'Top-up', signup: 'First month', data: 'Extra data' };
 
 @Component({
   selector: 'app-billing',

@@ -284,7 +284,7 @@ test('settings: change password, sign out, sign in with the new one', async ({ p
   await page.locator('input[name=password]').fill('sara-new-pass1');
   await page.getByRole('button', { name: 'Change password' }).click();
   await expect(page.getByText('Password changed.')).toBeVisible();
-  await page.getByRole('button', { name: 'Sign out' }).click();
+  await page.getByRole('button', { name: 'Sign out', exact: true }).click();
   await page.waitForURL(/login/);
   const anon = await apiAs();
   expect((await anon.post('login', { data: SARA })).status()).toBe(401);
@@ -310,11 +310,18 @@ test('speed test runs and is saved to history', async ({ page }) => {
   const demo = await apiLogin(DEMO);
   const before = (await (await (await apiAs(demo)).get('speedtests')).json()).results.length;
   await useSession(page, demo);
+  // Real runs measure against Cloudflare; here it's blocked so the test doesn't depend on the internet,
+  // which also proves the fallback to the MyTerra server works.
+  await page.route('https://speed.cloudflare.com/**', r => r.abort());
   await page.goto('/speed-test');
   await page.getByRole('button', { name: 'Start test' }).click();
-  await expect(page.getByRole('button', { name: 'Test again' })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole('button', { name: 'Test again' })).toBeVisible({ timeout: 45_000 });
+  await expect(page.getByText('Server: MyTerra server')).toBeVisible();
   await page.reload();
   await expect(page.locator('tbody tr')).toHaveCount(before + 1);
+  const saved = (await (await (await apiAs(demo)).get('speedtests')).json()).results[0];
+  expect(saved.server).toBe('MyTerra server');
+  expect(saved.download_mbps).toBeGreaterThan(0);
 });
 
 test('forgot password: unknown email is refused; code is checked before the new password', async ({ page }) => {

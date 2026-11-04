@@ -26,8 +26,19 @@ def sms_is_live() -> bool:
     return all(os.environ.get(k) for k in ("TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_FROM"))
 
 
+# Reserved for testing (RFC 2606): mail there can never arrive, so don't spend the daily email quota on it.
+UNDELIVERABLE = ("example.com", "example.org", "example.net")
+UNDELIVERABLE_TLDS = (".test", ".example", ".invalid", ".localhost")
+
+
+def is_undeliverable(address: str) -> bool:
+    domain = address.rsplit("@", 1)[-1].lower()
+    return (domain in UNDELIVERABLE or domain.endswith(tuple("." + d for d in UNDELIVERABLE))
+            or domain.endswith(UNDELIVERABLE_TLDS))
+
+
 def send_email(to: str, subject: str, body: str) -> None:
-    if not email_is_live():
+    if not email_is_live() or is_undeliverable(to):
         return _demo("email", to, subject, body)
     host, user, password = (os.environ[k] for k in SMTP_KEYS)
     port = int(os.environ.get("SMTP_PORT") or 587)

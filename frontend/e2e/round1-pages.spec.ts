@@ -40,6 +40,7 @@ const pages: { path: () => string; who: Who; expectText: string }[] = [
   { path: () => '/admin/outages', who: 'admin', expectText: 'Report an outage' },
   { path: () => '/admin/tickets', who: 'admin', expectText: 'Needs attention' },
   { path: () => `/admin/tickets/${ticketId}`, who: 'admin', expectText: 'Reply to the customer' },
+  { path: () => '/admin/reports', who: 'admin', expectText: 'Money received' },
   { path: () => '/admin/audit', who: 'admin', expectText: 'Audit log' },
 ];
 

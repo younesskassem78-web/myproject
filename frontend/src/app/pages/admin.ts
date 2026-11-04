@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Observable, finalize, forkJoin } from 'rxjs';
 import { ApiService } from '../core/api.service';
 import { errorText } from '../core/errors';
+import { saveFile } from '../core/download';
 import { AdminPlan, AdminUser, Application, InstallStatus, Role } from '../core/models';
 
 type Tab = 'applications' | 'users' | 'plans';
@@ -18,6 +19,8 @@ export function num(v: unknown): number | null {
 
 const blankPlan = () => ({ name: '', data_gb: null as number | null, speed_mbps: null as number | null, price: null as number | null });
 
+const PAGE = 50;
+
 /** Applications, customers and plans. Which one shows comes from the route. */
 @Component({
   selector: 'app-admin',
@@ -27,7 +30,8 @@ const blankPlan = () => ({ name: '', data_gb: null as number | null, speed_mbps:
       <h1>{{ title() }}</h1>
       @if (tab() === 'applications' && pendingCount()) { <span class="count">{{ pendingCount() }} waiting</span> }
       @if (tab() !== 'plans') {
-        <input class="search" type="search" placeholder="Search name or email" aria-label="Search" [(ngModel)]="query" />
+        <input class="search" type="search" placeholder="Search name, email, phone or city" aria-label="Search"
+               [(ngModel)]="query" (ngModelChange)="searchSoon()" />
       }
     </div>
 
@@ -101,7 +105,7 @@ const blankPlan = () => ({ name: '', data_gb: null as number | null, speed_mbps:
           <table>
             <thead><tr><th>User</th><th>Role</th><th>Plan</th><th>Installation</th><th>Balance ($)</th><th>Owes</th><th>Status</th><th></th></tr></thead>
             <tbody>
-              @for (u of filteredUsers(); track u.id) {
+              @for (u of users(); track u.id) {
                 <tr [class.inactive]="!u.active">
                   <td><strong>{{ u.name }}</strong><br /><span class="muted">{{ u.email }}</span>
                     @if (u.phone || u.city) { <br /><span class="muted">{{ u.phone }} {{ u.city }}</span> }</td>
@@ -138,6 +142,13 @@ const blankPlan = () => ({ name: '', data_gb: null as number | null, speed_mbps:
               } @empty { <tr><td colspan="8" class="muted">{{ loaded() ? 'No users match your search.' : 'Loading…' }}</td></tr> }
             </tbody>
           </table>
+        </div>
+        <div class="list-foot">
+          <span class="muted">Showing {{ users().length }} of {{ usersTotal() }}</span>
+          @if (users().length < usersTotal()) {
+            <button class="btn btn-ghost btn-sm" type="button" (click)="showMore()">Show more</button>
+          }
+          <button class="btn btn-ghost btn-sm" type="button" (click)="download('customers')">Download CSV</button>
         </div>
       }
 
@@ -202,7 +213,28 @@ export class Admin implements OnInit {
     return !q || fields.some(f => f?.toLowerCase().includes(q));
   }
   filteredApps = () => this.applications().filter(a => this.matches(a.name, a.email, a.phone));
-  filteredUsers = () => this.users().filter(u => this.matches(u.name, u.email, u.phone, u.city));
+  usersTotal = signal(0);
+  private shown = PAGE; // how many customers are on screen ("Show more" adds a page)
+  private searchTimer?: ReturnType<typeof setTimeout>;
+
+  /** Customers are searched on the server (there can be thousands); wait for typing to pause. */
+  searchSoon() {
+    clearTimeout(this.searchTimer);
+    this.searchTimer = setTimeout(() => { this.shown = PAGE; this.loadUsers(); }, 300);
+  }
+  showMore() {
+    this.shown += PAGE;
+    this.loadUsers();
+  }
+  loadUsers() {
+    this.api.adminUsers(this.query.trim(), this.shown).subscribe({
+      next: r => { this.users.set(r.items); this.usersTotal.set(r.total); },
+      error: e => this.error.set(errorText(e)),
+    });
+  }
+  download(kind: 'customers') {
+    this.api.exportCsv(kind).subscribe({ next: r => saveFile(r), error: e => this.error.set(errorText(e)) });
+  }
 
   ngOnInit() {
     this.api.me().subscribe({ next: m => this.myId.set(m.id), error: () => {} });
@@ -210,9 +242,16 @@ export class Admin implements OnInit {
   }
 
   load() {
-    forkJoin({ applications: this.api.adminApplications(), users: this.api.adminUsers(), plans: this.api.adminPlans() })
+    forkJoin({ applications: this.api.adminApplications(), users: this.api.adminUsers(this.query.trim(), this.shown),
+               plans: this.api.adminPlans() })
       .subscribe({
-        next: r => { this.applications.set(r.applications); this.users.set(r.users); this.plans.set(r.plans); this.loaded.set(true); },
+        next: r => {
+          this.applications.set(r.applications);
+          this.users.set(r.users.items);
+          this.usersTotal.set(r.users.total);
+          this.plans.set(r.plans);
+          this.loaded.set(true);
+        },
         error: e => this.error.set(errorText(e)),
       });
   }

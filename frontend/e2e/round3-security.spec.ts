@@ -53,7 +53,7 @@ test('signing out ends the session on the server', async ({ page }) => {
   const s = await apiLogin(DEMO);
   await useSession(page, s);
   await page.goto('/dashboard');
-  await page.getByRole('button', { name: 'Sign out' }).click();
+  await page.getByRole('button', { name: 'Sign out', exact: true }).click();
   await page.waitForURL(/login/);
   await expect.poll(async () => (await (await apiAs(s)).get('me')).status()).toBe(401);
 });

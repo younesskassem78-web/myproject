@@ -153,11 +153,15 @@ def reject(app_id: UUID, admin: Admin, conn: DB):
 # ---------- customers ----------
 
 @router.get("/api/admin/users")
-def list_users(_: Admin, conn: DB, response: Response, limit: Limit = 500, offset: Offset = 0):
+def list_users(_: Admin, conn: DB, response: Response, q: str = "", limit: Limit = 500, offset: Offset = 0):
+    """Customers and staff; `q` searches name, email, phone and city."""
+    like = f"%{q.strip()}%"
     return paged(conn, response, f"select {USER_COLS}, p.name as plan_name, "
                         "(select coalesce(sum(i.amount), 0)::float8 from invoices i "
                         " where i.user_id = u.id and i.status = 'unpaid') as amount_due "
-                        "from users u left join plans p on p.id = u.plan_id order by u.created_at, u.id", (), limit, offset)
+                        "from users u left join plans p on p.id = u.plan_id "
+                        "where %s = '' or u.name ilike %s or u.email ilike %s or u.phone ilike %s or u.city ilike %s "
+                        "order by u.created_at, u.id", (q.strip(), like, like, like, like), limit, offset)
 
 
 @router.post("/api/admin/users", status_code=201)

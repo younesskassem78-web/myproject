@@ -1,0 +1,14 @@
+# Public pages may be indexed; account and staff pages are private.
+User-agent: *
+Allow: /login
+Allow: /apply
+Allow: /status
+Disallow: /admin
+Disallow: /dashboard
+Disallow: /billing
+Disallow: /speed-test
+Disallow: /support
+Disallow: /plan
+Disallow: /settings
+Disallow: /forgot
+Disallow: /api/

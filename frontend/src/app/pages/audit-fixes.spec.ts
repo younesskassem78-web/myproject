@@ -21,7 +21,7 @@ describe('D4: admin number boxes never save a blank as 0', () => {
 
   async function setup() {
     api = {
-      me: vi.fn(() => of({ id: 'me' })), adminApplications: vi.fn(() => of([])), adminUsers: vi.fn(() => of([user])),
+      me: vi.fn(() => of({ id: 'me' })), adminApplications: vi.fn(() => of([])), adminUsers: vi.fn(() => of({ items: [user], total: 1 })),
       adminPlans: vi.fn(() => of([plan])), updateUser: vi.fn(() => of(user)), updatePlan: vi.fn(() => of(plan)),
       createPlan: vi.fn(() => of(plan)),
     };

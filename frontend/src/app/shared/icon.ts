@@ -21,6 +21,7 @@ const PATHS: Record<string, string> = {
   arrow: 'M5 12h14M13 6l6 6-6 6',
   print: 'M6 9V3h12v6M6 18H4v-7h16v7h-2M8 14h8v7H8z',
   plus: 'M12 5v14M5 12h14',
+  chart: 'M4 20V10M10 20V4M16 20v-7M2 20h20',
 };
 
 @Component({

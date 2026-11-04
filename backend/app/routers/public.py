@@ -13,7 +13,8 @@ from psycopg import errors
 from pydantic import BaseModel, StringConstraints, field_validator, model_validator
 
 from app import db, notify
-from app.deps import DB, DECLINED_TEST_CARD, PLAN_COLS, Card, Email, Password, Phone, Text, log, send_email_later
+from app.deps import (DB, DECLINED_TEST_CARD, PLAN_COLS, Card, Email, Password, Phone, Text, log, send_email_later,
+                      token_hash)
 
 router = APIRouter()
 
@@ -131,7 +132,8 @@ def login(body: Login, conn: DB, request: Request):
             conn.execute("update users set password_hash = %s where id = %s",
                          (db.hash_password(body.password), user["id"]))
         conn.execute("delete from tokens where expires_at < now()")  # tidy up old sessions
-        conn.execute("insert into tokens (token, user_id) values (%s, %s)", (token, user["id"]))
+        conn.execute("insert into tokens (token, user_id, user_agent, ip) values (%s, %s, %s, %s)",
+                     (token_hash(token), user["id"], (request.headers.get("user-agent") or "")[:300], ip))
         return {"token": token, "name": user["name"], "role": user["role"]}
     application = conn.execute("select status, password_hash from applications where email = %s "
                                "order by created_at desc limit 1", (email,)).fetchone()
@@ -147,7 +149,7 @@ def login(body: Login, conn: DB, request: Request):
 
 @router.post("/api/logout", status_code=204)
 def logout(conn: DB, authorization: str | None = Header(None)):
-    conn.execute("delete from tokens where token = %s", ((authorization or "").removeprefix("Bearer "),))
+    conn.execute("delete from tokens where token = %s", (token_hash(authorization),))
     return Response(status_code=204)
 
 

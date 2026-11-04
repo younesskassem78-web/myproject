@@ -32,6 +32,7 @@ export const routes: Routes = [
       { path: 'outages', loadComponent: () => import('./pages/admin/outages').then(m => m.AdminOutages), title: page('Outages') },
       { path: 'tickets', loadComponent: () => import('./pages/admin/tickets').then(m => m.AdminTickets), title: page('Tickets') },
       { path: 'tickets/:id', loadComponent: () => import('./pages/ticket').then(m => m.TicketPage), data: { staff: true }, title: page('Ticket') },
+      { path: 'reports', loadComponent: () => import('./pages/admin/reports').then(m => m.AdminReports), title: page('Reports') },
       { path: 'audit', loadComponent: () => import('./pages/admin/audit').then(m => m.AdminAudit), title: page('Audit log') },
     ],
   },

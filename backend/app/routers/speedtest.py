@@ -1,4 +1,4 @@
-"""In-browser speed test: the browser times downloads and uploads against these endpoints."""
+"""Speed test results. The browser measures against Cloudflare's speed-test servers, or these endpoints as a fallback."""
 import os
 
 from fastapi import APIRouter, HTTPException, Query, Request, Response
@@ -35,17 +35,18 @@ class Result(BaseModel):
     ping_ms: float = Field(ge=0, le=10_000)
     download_mbps: float = Field(ge=0, le=100_000)
     upload_mbps: float = Field(ge=0, le=100_000)
+    server: str | None = Field(None, max_length=80)
 
 
 COLS = ("id, ping_ms::float8 as ping_ms, download_mbps::float8 as download_mbps, "
-        "upload_mbps::float8 as upload_mbps, created_at")
+        "upload_mbps::float8 as upload_mbps, server, created_at")
 
 
 @router.post("/api/speedtests", status_code=201)
 def save(body: Result, user: User, conn: DB):
-    return conn.execute(f"insert into speed_tests (user_id, ping_ms, download_mbps, upload_mbps) "
-                        f"values (%s, %s, %s, %s) returning {COLS}",
-                        (user["id"], body.ping_ms, body.download_mbps, body.upload_mbps)).fetchone()
+    return conn.execute(f"insert into speed_tests (user_id, ping_ms, download_mbps, upload_mbps, server) "
+                        f"values (%s, %s, %s, %s, %s) returning {COLS}",
+                        (user["id"], body.ping_ms, body.download_mbps, body.upload_mbps, body.server)).fetchone()
 
 
 @router.get("/api/speedtests")

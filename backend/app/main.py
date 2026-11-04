@@ -5,7 +5,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from app import db
-from app.routers import admin, billing, customer, network, public, speedtest, support
+from app.routers import admin, billing, customer, network, public, reports, speedtest, support
 
 PRODUCTION = os.environ.get("APP_ENV", "development") == "production"
 CORS_ORIGINS = [o.strip() for o in os.environ.get("CORS_ORIGINS", "http://localhost:4200").split(",") if o.strip()]
@@ -21,8 +21,8 @@ async def lifespan(_):
 
 app = FastAPI(title="MyTerra API", lifespan=lifespan, redoc_url=None,
               docs_url=None if PRODUCTION else "/docs", openapi_url=None if PRODUCTION else "/openapi.json")
-app.add_middleware(CORSMiddleware, allow_origins=CORS_ORIGINS, allow_methods=["GET", "POST", "PATCH", "DELETE"],
-                   allow_headers=["Authorization", "Content-Type"])
+app.add_middleware(CORSMiddleware, allow_origins=CORS_ORIGINS, allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
+                   allow_headers=["Authorization", "Content-Type"], expose_headers=["X-Total-Count", "Content-Disposition"])
 
 
 @app.middleware("http")
@@ -36,5 +36,5 @@ async def security_headers(request: Request, call_next):
     return response
 
 
-for r in (public, customer, billing, support, speedtest, network, admin):
+for r in (public, customer, billing, support, speedtest, network, admin, reports):
     app.include_router(r.router)

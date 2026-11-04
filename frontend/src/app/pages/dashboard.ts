@@ -1,12 +1,21 @@
 import { CurrencyPipe, DatePipe, DecimalPipe } from '@angular/common';
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal, viewChild } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { ApiService } from '../core/api.service';
 import { errorText } from '../core/errors';
-import { BillingSummary, InstallStatus, Me, Usage } from '../core/models';
+import { BillingSummary, DataPack, InstallStatus, Me, Usage } from '../core/models';
 import { Icon } from '../shared/icon';
+import { CardDetails, PayDialog } from './pay-dialog';
 import { UsageChart } from './usage-chart';
+
+/** yyyy-mm-dd for today + offset days (local time). */
+const isoDay = (offset: number) => {
+  const d = new Date();
+  d.setDate(d.getDate() + offset);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
 
 const INSTALL_STEPS: { key: InstallStatus; label: string }[] = [
   { key: 'scheduled', label: 'Booked' },
@@ -16,7 +25,7 @@ const INSTALL_STEPS: { key: InstallStatus; label: string }[] = [
 
 @Component({
   selector: 'app-dashboard',
-  imports: [CurrencyPipe, DatePipe, DecimalPipe, RouterLink, UsageChart, Icon],
+  imports: [CurrencyPipe, DatePipe, DecimalPipe, FormsModule, RouterLink, UsageChart, Icon, PayDialog],
   template: `
     @if (loadError()) {
       <p class="error" role="alert">{{ loadError() }}</p>
@@ -42,6 +51,23 @@ const INSTALL_STEPS: { key: InstallStatus; label: string }[] = [
           </ol>
           @if (me()!.install_date) {
             <p>Technician visit: <strong>{{ me()!.install_date | date: 'EEEE d MMMM' }}</strong>, between 9:00 and 17:00.</p>
+            @if (!moving()) {
+              @if (canMove()) {
+                <button type="button" class="btn btn-ghost btn-sm" (click)="startMove()">Change date</button>
+              } @else {
+                <p class="hint">{{ changesLeft() <= 0 ? 'You’ve changed this visit 3 times.' : 'The visit is less than 24 hours away.' }}
+                  To change it, <a routerLink="/support">open a support ticket</a>.</p>
+              }
+            } @else {
+              <form class="inline-form" (ngSubmit)="saveMove()">
+                <label>New date <input type="date" name="newDate" [min]="minDate" [max]="maxDate" [(ngModel)]="newDate" /></label>
+                <button class="btn btn-sm" type="submit" [disabled]="busy()">{{ busy() ? 'Saving…' : 'Save' }}</button>
+                <button class="link-btn" type="button" (click)="moving.set(false)">Cancel</button>
+              </form>
+              <p class="hint">You can change the date {{ changesLeft() }} more {{ changesLeft() === 1 ? 'time' : 'times' }}.</p>
+            }
+            @if (moveError()) { <p class="error" role="alert">{{ moveError() }}</p> }
+            @if (moveNotice()) { <p class="notice" role="status">{{ moveNotice() }}</p> }
           }
         </section>
       }
@@ -54,7 +80,24 @@ const INSTALL_STEPS: { key: InstallStatus; label: string }[] = [
              [attr.aria-valuenow]="percent()" aria-valuemin="0" aria-valuemax="100">
           <div class="fiber-light" [class.full]="percent() >= 100" [style.width.%]="percent()"></div>
         </div>
-        <p class="muted">{{ left() | number: '1.2-2' }} GB left, resets on the 1st.</p>
+        <p class="muted">{{ left() | number: '1.2-2' }} GB left, resets on the 1st.
+          @if (usage()!.extra_gb) { Includes {{ usage()!.extra_gb }} GB extra data bought this month. }</p>
+        @if (!showPacks()) {
+          <button type="button" class="btn btn-ghost btn-sm" [class.btn-amber]="percent() >= 80" (click)="openPacks()">Add extra data</button>
+        } @else {
+          <div class="packs" role="group" aria-label="Extra data packs">
+            <p class="muted">Extra data for the rest of this month. Pay once, no change to your plan.</p>
+            <div class="pack-row">
+              @for (p of packs(); track p.gb) {
+                <button type="button" class="pack" (click)="choose(p)">
+                  <strong>{{ p.gb }} GB</strong><span>{{ p.price | currency: 'USD' : 'symbol' : '1.0-2' }}</span>
+                </button>
+              } @empty { <span class="muted">Loading…</span> }
+              <button type="button" class="link-btn" (click)="showPacks.set(false)">Cancel</button>
+            </div>
+          </div>
+        }
+        @if (packNotice()) { <p class="notice" role="status">{{ packNotice() }}</p> }
       </section>
 
       <div class="dash-grid">
@@ -87,6 +130,8 @@ const INSTALL_STEPS: { key: InstallStatus; label: string }[] = [
     } @else {
       <div class="skeleton" aria-busy="true" aria-label="Loading your account"></div>
     }
+    <app-pay-dialog #packPay [amount]="chosen()?.price ?? 0" [description]="(chosen()?.gb ?? 0) + ' GB extra data, this month'"
+                    title="Add extra data" doneLabel="Data added" [pay]="payForPack" (paid)="afterPack()" />
   `,
 })
 export class Dashboard implements OnInit {
@@ -106,6 +151,61 @@ export class Dashboard implements OnInit {
     return u ? Math.max(0, u.limit_gb - u.used_gb) : 0;
   });
   installIndex = computed(() => INSTALL_STEPS.findIndex(s => s.key === this.me()?.install_status));
+  // installation visit: customers may move it while it's more than 24 h away, up to 3 times
+  moving = signal(false);
+  busy = signal(false);
+  moveError = signal('');
+  moveNotice = signal('');
+  newDate = '';
+  readonly minDate = isoDay(1);
+  readonly maxDate = isoDay(60);
+  changesLeft = computed(() => 3 - (this.me()?.install_reschedules ?? 0));
+  canMove = computed(() => {
+    const d = this.me()?.install_date;
+    return !!d && d >= isoDay(2) && this.changesLeft() > 0;
+  });
+  startMove() {
+    this.newDate = this.me()!.install_date!;
+    this.moveError.set('');
+    this.moveNotice.set('');
+    this.moving.set(true);
+  }
+  saveMove() {
+    if (!this.newDate) { this.moveError.set('Pick a date'); return; }
+    this.busy.set(true);
+    this.moveError.set('');
+    this.api.rescheduleInstall(this.newDate).subscribe({
+      next: r => {
+        this.me.update(m => m && { ...m, install_date: r.install_date, install_reschedules: 3 - r.changes_left });
+        this.moving.set(false);
+        this.busy.set(false);
+        this.moveNotice.set('Visit moved. We’ve sent you a confirmation.');
+      },
+      error: e => { this.moveError.set(errorText(e)); this.busy.set(false); },
+    });
+  }
+
+  packs = signal<DataPack[]>([]);
+  showPacks = signal(false);
+  chosen = signal<DataPack | null>(null);
+  packNotice = signal('');
+  private packPay = viewChild.required<PayDialog>('packPay');
+
+  openPacks() {
+    this.showPacks.set(true);
+    this.packNotice.set('');
+    if (!this.packs().length) this.api.dataPacks().subscribe({ next: p => this.packs.set(p), error: e => this.packNotice.set(errorText(e)) });
+  }
+  choose(p: DataPack) {
+    this.chosen.set(p);
+    this.packPay().open();
+  }
+  payForPack = (card: CardDetails) => this.api.buyDataPack(this.chosen()!.gb, card);
+  afterPack() {
+    this.showPacks.set(false);
+    this.packNotice.set(`${this.chosen()!.gb} GB added. It lasts until the end of the month.`);
+    this.api.usage().subscribe({ next: u => this.usage.set(u) });
+  }
 
   ngOnInit() {
     forkJoin({ me: this.api.me(), usage: this.api.usage(), bill: this.api.billing() }).subscribe({

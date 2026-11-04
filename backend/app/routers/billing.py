@@ -151,11 +151,41 @@ def run_billing(admin: Admin, conn: DB):
                 events.notify_user(conn, c["id"], "invoice", "Your bill is ready",
                                    f"{inv['number']}: ${c['price']:.2f}, due in {DUE_DAYS} days.", "/billing",
                                    email_to=c["email"])
-        events.audit(conn, admin, "ran billing", f"{period:%B %Y}: {issued} invoices, {autopaid} autopaid")
-    return {"period": period, "issued": issued, "autopaid": autopaid}
+        reminded = send_due_reminders(conn)
+        events.audit(conn, admin, "ran billing",
+                     f"{period:%B %Y}: {issued} invoices, {autopaid} autopaid, {reminded} reminders")
+    return {"period": period, "issued": issued, "autopaid": autopaid, "reminded": reminded}
+
+
+REMIND_DAYS = 3
+
+
+def send_due_reminders(conn) -> int:
+    """One reminder per unpaid bill that falls due within REMIND_DAYS days (not for autopay customers)."""
+    due = conn.execute(
+        "update invoices i set reminded_at = now() from users u "
+        "where u.id = i.user_id and i.status = 'unpaid' and i.reminded_at is null and not u.autopay "
+        "and i.due_date between current_date and current_date + %s "
+        "returning i.user_id, i.number, i.amount::float8 as amount, i.due_date, u.email", (REMIND_DAYS,)).fetchall()
+    for b in due:
+        events.notify_user(conn, b["user_id"], "invoice", "Your bill is due soon",
+                           f"{b['number']}: ${b['amount']:.2f}, due {b['due_date']:%A %d %B}.", "/billing", email_to=b["email"])
+    return len(due)
+
+
+STATUS_FILTER = {  # "overdue" isn't stored: it's an unpaid bill past its due date
+    "": "true", "paid": "i.status = 'paid'", "void": "i.status = 'void'",
+    "unpaid": "i.status = 'unpaid' and i.due_date >= current_date",
+    "overdue": "i.status = 'unpaid' and i.due_date < current_date",
+}
 
 
 @router.get("/api/admin/invoices")
-def all_invoices(_: Admin, conn: DB, response: Response, limit: Limit = 500, offset: Offset = 0):
+def all_invoices(_: Admin, conn: DB, response: Response, q: str = "",
+                 status: Literal["", "unpaid", "overdue", "paid", "void"] = "", limit: Limit = 500, offset: Offset = 0):
+    """All bills; `q` searches customer name, email and bill number."""
+    like = f"%{q.strip()}%"
     return paged(conn, response, f"select {INV_COLS}, u.email as user_email, u.name as user_name from invoices i "
-                 "join users u on u.id = i.user_id order by i.period desc, i.issued_at desc, i.id", (), limit, offset)
+                 f"join users u on u.id = i.user_id where {STATUS_FILTER[status]} "
+                 "and (%s = '' or u.name ilike %s or u.email ilike %s or i.number ilike %s) "
+                 "order by i.period desc, i.issued_at desc, i.id", (q.strip(), like, like, like), limit, offset)

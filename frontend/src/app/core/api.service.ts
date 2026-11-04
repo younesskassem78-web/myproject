@@ -1,10 +1,11 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { CardDetails } from '../pages/pay-dialog';
+import { map } from 'rxjs';
 import {
   AdminInvoice, AdminOverview, AdminPlan, AdminTicket, AdminUser, Application, AuditEntry, BillingSummary, Invoice,
   InvoiceDetail, Me, Notification, Outage, OutageStatus, Payment, Plan, Role, SpeedResult, Ticket, TicketCategory,
-  TicketDetail, TicketMessage, TicketStatus, Usage,
+  TicketDetail, TicketMessage, TicketStatus, Usage, DataPack, EmailPrefs, Session, RevenueReport,
 } from './models';
 
 // Same-origin: the dev server (proxy.conf.json) and nginx in production forward /api to the backend.
@@ -37,6 +38,16 @@ export class ApiService {
   // customer
   me() { return this.http.get<Me>(`${API}/me`); }
   usage() { return this.http.get<Usage>(`${API}/usage`); }
+  rescheduleInstall(install_date: string) {
+    return this.http.post<{ install_date: string; changes_left: number }>(`${API}/installation/reschedule`, { install_date });
+  }
+  emailPrefs() { return this.http.get<EmailPrefs>(`${API}/account/email-preferences`); }
+  setEmailPrefs(prefs: EmailPrefs) { return this.http.put<EmailPrefs>(`${API}/account/email-preferences`, prefs); }
+  sessions() { return this.http.get<Session[]>(`${API}/account/sessions`); }
+  endSession(id: string) { return this.http.delete(`${API}/account/sessions/${id}`); }
+  endOtherSessions() { return this.http.post<{ signed_out: number }>(`${API}/account/sessions/sign-out-others`, {}); }
+  dataPacks() { return this.http.get<DataPack[]>(`${API}/data-packs`); }
+  buyDataPack(gb: number, card: CardDetails) { return this.http.post<{ extra_gb: number }>(`${API}/data-packs`, { gb, card }); }
   topUp(amount: number, card: CardDetails) { return this.http.post<{ balance: number }>(`${API}/topup`, { amount, card }); }
   changePlan(planId: string) { return this.http.post<Plan>(`${API}/plan`, { plan_id: planId }); }
   changePassword(current: string, password: string) {
@@ -65,7 +76,7 @@ export class ApiService {
   replyTicket(id: string, body: string) { return this.http.post<TicketMessage>(`${API}/tickets/${id}/messages`, { body }); }
 
   speedTests() { return this.http.get<{ plan_speed_mbps: number | null; results: SpeedResult[] }>(`${API}/speedtests`); }
-  saveSpeedTest(r: { ping_ms: number; download_mbps: number; upload_mbps: number }) {
+  saveSpeedTest(r: { ping_ms: number; download_mbps: number; upload_mbps: number; server?: string }) {
     return this.http.post<SpeedResult>(`${API}/speedtests`, r);
   }
 
@@ -77,7 +88,8 @@ export class ApiService {
     return this.http.post<{ user_id: string; email_sent: boolean }>(`${API}/admin/applications/${id}/approve`, {});
   }
   reject(id: string) { return this.http.post(`${API}/admin/applications/${id}/reject`, {}); }
-  adminUsers() { return this.http.get<AdminUser[]>(`${API}/admin/users`); }
+  /** One page of customers matching `q`, plus how many match in total. */
+  adminUsers(q = '', limit = 50, offset = 0) { return this.page<AdminUser>(`${API}/admin/users`, { q, limit, offset }); }
   createUser(body: object) { return this.http.post(`${API}/admin/users`, body); }
   updateUser(id: string, changes: object) { return this.http.patch<AdminUser>(`${API}/admin/users/${id}`, changes); }
   deleteUser(id: string) { return this.http.delete(`${API}/admin/users/${id}`); }
@@ -89,8 +101,20 @@ export class ApiService {
   adminTicket(id: string) { return this.http.get<TicketDetail>(`${API}/admin/tickets/${id}`); }
   staffReply(id: string, body: string) { return this.http.post<TicketMessage>(`${API}/admin/tickets/${id}/messages`, { body }); }
   setTicketStatus(id: string, status: TicketStatus) { return this.http.patch(`${API}/admin/tickets/${id}`, { status }); }
-  adminInvoices() { return this.http.get<AdminInvoice[]>(`${API}/admin/invoices`); }
-  runBilling() { return this.http.post<{ period: string; issued: number; autopaid: number }>(`${API}/admin/billing/run`, {}); }
+  adminInvoices(q = '', status = '', limit = 50, offset = 0) {
+    return this.page<AdminInvoice>(`${API}/admin/invoices`, { q, status, limit, offset });
+  }
+  revenueReport(start: string, end: string) { return this.http.get<RevenueReport>(`${API}/admin/reports/revenue`, { params: { start, end } }); }
+  /** A CSV file from the server (the request needs the sign-in header, so it can't be a plain link). */
+  exportCsv(kind: 'customers' | 'invoices' | 'payments', start = '', end = '') {
+    const params: Record<string, string> = kind === 'customers' ? {} : { start, end };
+    return this.http.get(`${API}/admin/export/${kind}.csv`, { params, responseType: 'blob', observe: 'response' });
+  }
+  private page<T>(url: string, params: Record<string, string | number>) {
+    return this.http.get<T[]>(url, { params, observe: 'response' })
+      .pipe(map(r => ({ items: r.body ?? [], total: Number(r.headers.get('X-Total-Count') ?? r.body?.length ?? 0) })));
+  }
+  runBilling() { return this.http.post<{ period: string; issued: number; autopaid: number; reminded: number }>(`${API}/admin/billing/run`, {}); }
   adminOutages() { return this.http.get<Outage[]>(`${API}/admin/outages`); }
   openOutage(body: { city: string; title: string; message: string }) { return this.http.post<Outage>(`${API}/admin/outages`, body); }
   updateOutage(id: string, changes: { status?: OutageStatus; message?: string }) {

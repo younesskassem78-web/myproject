@@ -202,6 +202,40 @@ end $$;
 -- v4 (audit 2): codes remember the requesting address, so one visitor can't send hundreds of emails
 alter table verifications add column if not exists ip text;
 create index if not exists verifications_ip on verifications (ip, created_at);
+-- v5 (features): extra data packs bought during the month
+create table if not exists data_addons (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references users(id) on delete cascade,
+  month text not null check (month ~ '^[0-9]{4}-[0-9]{2}$'),
+  gb int not null check (gb > 0),
+  price numeric(8,2) not null check (price >= 0),
+  payment_id uuid references payments(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+create index if not exists data_addons_user_month on data_addons (user_id, month);
+do $$ begin
+  if (select pg_get_constraintdef(oid) from pg_constraint where conname = 'payments_kind_check') not like '%data%' then
+    alter table payments drop constraint payments_kind_check;
+    alter table payments add constraint payments_kind_check check (kind in ('invoice', 'topup', 'signup', 'data'));
+  end if;
+end $$;
+-- customers can move their installation visit themselves, a limited number of times
+alter table users add column if not exists install_reschedules int not null default 0 check (install_reschedules >= 0);
+-- email topics a customer switched off (in-app notifications always stay on)
+alter table users add column if not exists email_opt_out text[] not null default '{}'
+  check (email_opt_out <@ array['billing', 'outage', 'ticket', 'installation']);
+-- sessions: store only a SHA-256 fingerprint of each token (a leaked database can't be used to sign in),
+-- plus what customers need to recognise their signed-in devices
+alter table tokens add column if not exists id uuid not null default gen_random_uuid();
+alter table tokens add column if not exists user_agent text;
+alter table tokens add column if not exists ip text;
+alter table tokens add column if not exists last_used_at timestamptz not null default now();
+create unique index if not exists tokens_id on tokens (id);
+update tokens set token = encode(sha256(convert_to(token, 'UTF8')), 'hex') where length(token) <> 64;
+-- one "your bill is due soon" reminder per bill
+alter table invoices add column if not exists reminded_at timestamptz;
+-- which server a speed test measured against ("Cloudflare, Beirut" or "MyTerra server")
+alter table speed_tests add column if not exists server text;
 """
 
 
@@ -263,7 +297,7 @@ def init(reset: bool = False) -> None:
     """Create tables and add demo data to an empty database."""
     with connect() as c:
         if reset:
-            c.execute("drop table if exists usage_alerts, login_failures, audit_log, speed_tests, ticket_messages, "
+            c.execute("drop table if exists data_addons, usage_alerts, login_failures, audit_log, speed_tests, ticket_messages, "
                       "notifications, outages, payments, invoices, verifications, tickets, tokens, applications, "
                       "users, plans cascade")
         c.execute(SCHEMA)

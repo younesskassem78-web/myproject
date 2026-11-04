@@ -96,3 +96,13 @@ def test_failed_sms_gives_a_clear_error_and_leaves_no_code(client, monkeypatch):
     # no orphan code was left behind, so asking again isn't blocked by the one-minute limit
     monkeypatch.setattr(notify.httpx, "post", lambda url, **kw: FakeResponse(201, {}))
     assert client.post("/api/verify/send", json={"channel": "sms", "target": "+96170123456"}).status_code == 200
+
+
+def test_test_addresses_are_never_sent_for_real(monkeypatch, smtp):
+    for k, v in (("SMTP_HOST", "smtp-relay.brevo.com"), ("SMTP_USER", "x"), ("SMTP_PASSWORD", "y")):
+        monkeypatch.setenv(k, v)
+    notify.send_email("virtual.user@example.com", "Hi", "Body")
+    notify.send_email("someone@shop.test", "Hi", "Body")
+    assert smtp.sent == [] and [m["to"] for m in notify.OUTBOX[-2:]] == ["virtual.user@example.com", "someone@shop.test"]
+    notify.send_email("real.person@gmail.com", "Hi", "Body")
+    assert len(smtp.sent) == 1

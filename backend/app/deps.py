@@ -1,10 +1,11 @@
 """Shared types, database dependency and auth checks used by every router."""
+import hashlib
 import logging
 import re
 import os
 import random
 from concurrent.futures import ThreadPoolExecutor
-from datetime import date
+from datetime import date, datetime, timezone
 from typing import Annotated
 from uuid import UUID
 
@@ -27,16 +28,22 @@ Password = Annotated[str, StringConstraints(min_length=8, max_length=128)]
 Money = Annotated[float, Field(ge=0, le=100_000)]
 
 USER_COLS = ("u.id, u.email, u.name, u.phone, u.address, u.city, u.role, u.plan_id, u.balance::float8 as balance, "
-             "u.active, u.created_at, u.autopay, u.card_brand, u.card_last4, u.install_status, u.install_date")
+             "u.active, u.created_at, u.autopay, u.card_brand, u.card_last4, u.install_status, u.install_date, u.install_reschedules")
 PLAN_COLS = "id, name, data_gb, speed_mbps, price::float8 as price, active"
 
 
+def token_hash(authorization_or_token: str | None) -> str:
+    """Sessions are stored as SHA-256 fingerprints, never as the token itself."""
+    return hashlib.sha256((authorization_or_token or "").removeprefix("Bearer ").encode()).hexdigest()
+
+
 def current_user(conn: DB, authorization: str | None = Header(None)) -> dict:
-    token = (authorization or "").removeprefix("Bearer ")
-    user = conn.execute(f"select {USER_COLS} from tokens t join users u on u.id = t.user_id "
-                        "where t.token = %s and t.expires_at > now() and u.active", (token,)).fetchone()
+    user = conn.execute(f"select {USER_COLS}, t.id as session_id, t.last_used_at from tokens t join users u on u.id = t.user_id "
+                        "where t.token = %s and t.expires_at > now() and u.active", (token_hash(authorization),)).fetchone()
     if not user:
         raise HTTPException(401, "Not authenticated")
+    if (datetime.now(timezone.utc) - user["last_used_at"]).total_seconds() > 300:  # one write per 5 min, not per request
+        conn.execute("update tokens set last_used_at = now() where id = %s", (user["session_id"],))
     return user
 
 

@@ -15,16 +15,19 @@ A self-service portal for a home internet provider. Customers manage their own s
 | **Support**: troubleshooter, tickets with a reply thread, attach a speed test | "Did anyone answer me?" |
 | **Notifications**: bill ready, payment received, outage nearby, support reply, data at 80% / 100%, installation updates | Finding out before it's a problem |
 | **Installation tracker**: booked, technician assigned, installed | "When is the technician coming?" |
-| **Change plan**, **Settings** (password, dark mode) | Self-service instead of a call |
+| **Extra data packs** (10 / 25 / 50 GB for the rest of the month) | "I ran out of data mid-month" |
+| **Move my installation visit** (more than 24 h ahead, up to 3 times) | "I can't be home that day" |
+| **Change plan**, **Settings** (password, dark mode, which emails to get, signed-in devices) | Self-service instead of a call; lost-phone safety |
 | **Apply**: verified email + SMS codes, address, ID, install date, first-month card payment | Signing up without visiting a shop |
 
 | For staff (admin) | |
 |---|---|
 | **Overview**: active customers, monthly recurring revenue, unpaid and overdue bills, waiting applications, open tickets, active outages, payments chart |
 | **Applications**: approve (creates the account, the paid first bill and the install booking, emails a sign-in link) or reject (emails a refund note) |
-| **Customers**: add, change plan / role / balance / installation step, reset password, deactivate, delete |
+| **Customers**: search on the server, add, change plan / role / balance / installation step, reset password, deactivate, delete (only without billing history), CSV download |
 | **Plans**: add, edit speed / data / price, hide, delete when unused |
-| **Billing**: issue this month's bills (safe to run twice, charges autopay), search and filter all bills |
+| **Billing**: issue this month's bills (safe to run twice, charges autopay, reminds bills due within 3 days), search and filter all bills on the server |
+| **Reports**: money received, bills and new customers for any date range; CSV downloads of customers, bills and payments |
 | **Outages**: open, update, resolve; customers in that city are notified by app and email |
 | **Tickets**: filter, reply, change status (customer is notified) |
 | **Audit log**: every admin change, who and when |
@@ -116,7 +119,7 @@ They cover every page at desktop, tablet and phone sizes and in dark mode (conte
 
 ## Security notes
 - Passwords: PBKDF2-SHA256, 600,000 rounds, random salt; older hashes are upgraded at the next sign-in.
-- Sessions: random 256-bit tokens stored server-side, expire after 30 days, deleted on sign-out, password change or deactivation.
+- Sessions: random 256-bit tokens, stored only as SHA-256 fingerprints, expire after 30 days, deleted on sign-out, password change or deactivation; customers can see and end their signed-in devices.
 - Sign-in: 5 wrong passwords in 15 minutes locks that email for 15 minutes. At most 10 code emails per hour from one network address (protects the email quota). Password reset by emailed 6-digit code (5 tries per code, 10-minute expiry), checked before the new password is asked for. Unknown emails get a clear "no account" message (a deliberate usability choice: it shows whether an email is a customer).
 - Every query is parameterised; every customer endpoint is scoped to the signed-in user (tested for cross-account access).
 - Security headers on the API (`nosniff`, `DENY` framing, `no-store` caching) and a strict Content-Security-Policy in nginx.

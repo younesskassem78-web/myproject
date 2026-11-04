@@ -1,5 +1,7 @@
 import { Component, inject, signal } from '@angular/core';
-import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { Meta } from '@angular/platform-browser';
+import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { filter } from 'rxjs';
 import { AuthService } from './core/auth.service';
 import { ThemeService } from './core/theme.service';
 import { Icon } from './shared/icon';
@@ -15,6 +17,8 @@ const CUSTOMER_NAV: NavItem[] = [
   { path: '/plan', label: 'Plan', icon: 'layers' },
   { path: '/settings', label: 'Settings', icon: 'settings' },
 ];
+const PUBLIC_PAGE = /^\/(login|apply|status)(\?|$)/;
+
 const ADMIN_NAV: NavItem[] = [
   { path: '/admin', label: 'Overview', icon: 'home', exact: true },
   { path: '/admin/applications', label: 'Applications', icon: 'inbox' },
@@ -23,6 +27,7 @@ const ADMIN_NAV: NavItem[] = [
   { path: '/admin/billing', label: 'Billing', icon: 'bill' },
   { path: '/admin/outages', label: 'Outages', icon: 'alert' },
   { path: '/admin/tickets', label: 'Tickets', icon: 'help' },
+  { path: '/admin/reports', label: 'Reports', icon: 'chart' },
   { path: '/admin/audit', label: 'Audit log', icon: 'list' },
 ];
 
@@ -91,7 +96,16 @@ export class App {
   auth = inject(AuthService);
   theme = inject(ThemeService);
   private router = inject(Router);
+  private meta = inject(Meta);
   more = signal(false);
+
+  constructor() {
+    // Belt and braces with robots.txt: only the public pages may appear in search results.
+    this.router.events.pipe(filter(e => e instanceof NavigationEnd)).subscribe(() => {
+      const isPublic = PUBLIC_PAGE.test(this.router.url);
+      this.meta.updateTag({ name: 'robots', content: isPublic ? 'index, follow' : 'noindex, nofollow' });
+    });
+  }
 
   nav() { return this.auth.role() === 'admin' ? ADMIN_NAV : CUSTOMER_NAV; }
   firstName() { return (this.auth.name() ?? '').split(' ')[0]; }

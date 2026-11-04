@@ -27,3 +27,11 @@ def test_save_and_history(client, auth_headers):
 def test_rejects_nonsense(client, auth_headers):
     r = client.post("/api/speedtests", headers=auth_headers(client), json={"ping_ms": -1, "download_mbps": 1, "upload_mbps": 1})
     assert r.status_code == 422
+
+
+def test_result_remembers_which_server_measured_it(client, auth_headers):
+    h = auth_headers(client)
+    r = client.post("/api/speedtests", headers=h, json={"ping_ms": 9, "download_mbps": 48.2, "upload_mbps": 11,
+                                                         "server": "Cloudflare, Beirut"})
+    assert r.status_code == 201 and r.json()["server"] == "Cloudflare, Beirut"
+    assert client.get("/api/speedtests", headers=h).json()["results"][0]["server"] == "Cloudflare, Beirut"
