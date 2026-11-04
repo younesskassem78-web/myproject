@@ -5,8 +5,12 @@ import { map } from 'rxjs';
 import {
   AdminInvoice, AdminOverview, AdminPlan, AdminTicket, AdminUser, Application, AuditEntry, BillingSummary, Invoice,
   InvoiceDetail, Me, Notification, Outage, OutageStatus, Payment, Plan, Role, SpeedResult, Ticket, TicketCategory,
-  TicketDetail, TicketMessage, TicketStatus, Usage, DataPack, EmailPrefs, Session, RevenueReport, Automation,
+  TicketDetail, TicketMessage, TicketStatus, Usage, DataPack, EmailPrefs, Session, RevenueReport, Automation, TwoFactorStatus,
 } from './models';
+
+export interface Signed { token: string; name: string; role: Role; }
+/** Either signed in, or the password was right and an authenticator code is needed next. */
+export type LoginResult = Signed | { two_factor_required: true; challenge: string };
 
 // Same-origin: the dev server (proxy.conf.json) and nginx in production forward /api to the backend.
 export const API = '/api';
@@ -16,9 +20,14 @@ export class ApiService {
   private http = inject(HttpClient);
 
   // public
-  login(email: string, password: string) {
-    return this.http.post<{ token: string; name: string; role: Role }>(`${API}/login`, { email, password });
-  }
+  login(email: string, password: string) { return this.http.post<LoginResult>(`${API}/login`, { email, password }); }
+  login2fa(challenge: string, code: string) { return this.http.post<Signed>(`${API}/login/2fa`, { challenge, code }); }
+  twoFactor() { return this.http.get<TwoFactorStatus>(`${API}/account/2fa`); }
+  twoFactorSetup() { return this.http.post<{ secret: string; uri: string }>(`${API}/account/2fa/setup`, {}); }
+  twoFactorEnable(code: string) { return this.http.post<{ recovery_codes: string[] }>(`${API}/account/2fa/enable`, { code }); }
+  twoFactorDisable(password: string, code: string) { return this.http.post(`${API}/account/2fa/disable`, { password, code }); }
+  resetTwoFactor(userId: string) { return this.http.post(`${API}/admin/users/${userId}/2fa/reset`, {}); }
+
   logout() { return this.http.post<void>(`${API}/logout`, {}); }
   plans() { return this.http.get<Plan[]>(`${API}/plans`); }
   status() { return this.http.get<{ active: Outage[]; recent: Outage[] }>(`${API}/status`); }

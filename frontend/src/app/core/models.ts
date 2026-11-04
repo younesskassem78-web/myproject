@@ -27,6 +27,7 @@ export interface Automation {
   scheduler_on: boolean; billing_hour: number; last_billing_at: string | null; last_billing_result: string | null;
   emails: { waiting: number; failed: number; sent_today: number };
 }
+export interface TwoFactorStatus { enabled: boolean; enabled_at: string | null; recovery_left: number; }
 export type EmailTopic = 'billing' | 'outage' | 'ticket' | 'installation';
 export type EmailPrefs = Record<EmailTopic, boolean>;
 export interface Session { id: string; device: string; ip: string | null; created_at: string; last_used_at: string; current: boolean; }
@@ -75,7 +76,7 @@ export interface AdminUser {
   id: string; name: string; email: string; phone: string | null; address: string | null; city: string | null;
   role: Role; plan_id: string | null; plan_name: string | null; balance: number; active: boolean; created_at: string;
   install_status: InstallStatus | null; install_date: string | null; amount_due: number;
-}
+ two_factor?: boolean; }
 export interface AdminPlan extends Plan { users: number; }
 export interface AdminTicket extends Ticket { user_email: string; user_name: string; replies: number; }
 export interface AdminInvoice extends Invoice { user_email: string; user_name: string; }

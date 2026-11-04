@@ -32,6 +32,7 @@ const ADMIN_NAV: NavItem[] = [
   { path: '/admin/tickets', label: 'Tickets', icon: 'help', area: 'tickets' },
   { path: '/admin/reports', label: 'Reports', icon: 'chart', area: 'reports' },
   { path: '/admin/audit', label: 'Audit log', icon: 'list', area: 'audit' },
+  { path: '/admin/account', label: 'My account', icon: 'settings', area: 'overview' },
 ];
 
 @Component({

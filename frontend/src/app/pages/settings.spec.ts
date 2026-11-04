@@ -17,6 +17,7 @@ describe('Settings', () => {
       ])),
       endSession: vi.fn(() => of(null)),
       endOtherSessions: vi.fn(() => of({ signed_out: 1 })),
+      twoFactor: vi.fn(() => of({ enabled: false, enabled_at: null, recovery_left: 0 })),
     };
     TestBed.configureTestingModule({ imports: [Settings], providers: [{ provide: ApiService, useValue: api }] });
     const fixture = TestBed.createComponent(Settings);

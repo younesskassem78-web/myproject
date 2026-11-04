@@ -33,6 +33,7 @@ export const routes: Routes = [
       { path: 'tickets', loadComponent: () => import('./pages/admin/tickets').then(m => m.AdminTickets), data: { area: 'tickets' }, title: page('Tickets') },
       { path: 'tickets/:id', loadComponent: () => import('./pages/ticket').then(m => m.TicketPage), data: { area: 'tickets', staff: true }, title: page('Ticket') },
       { path: 'reports', loadComponent: () => import('./pages/admin/reports').then(m => m.AdminReports), data: { area: 'reports' }, title: page('Reports') },
+      { path: 'account', loadComponent: () => import('./pages/admin/account').then(m => m.AdminAccount), data: { area: 'overview' }, title: page('My account') },
       { path: 'audit', loadComponent: () => import('./pages/admin/audit').then(m => m.AdminAudit), data: { area: 'audit' }, title: page('Audit log') },
     ],
   },

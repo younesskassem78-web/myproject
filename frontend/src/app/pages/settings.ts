@@ -1,5 +1,6 @@
 import { DatePipe } from '@angular/common';
 import { TPipe, t } from '../core/i18n';
+import { TwoFactorCard } from '../shared/two-factor';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../core/api.service';
@@ -9,7 +10,7 @@ import { ThemeService } from '../core/theme.service';
 
 @Component({
   selector: 'app-settings',
-  imports: [TPipe, FormsModule, DatePipe],
+  imports: [TPipe, TwoFactorCard, FormsModule, DatePipe],
   template: `
     <h1>{{ 'Settings' | t }}</h1>
     <div class="settings-grid">
@@ -73,6 +74,8 @@ import { ThemeService } from '../core/theme.service';
         }
         @if (sessionNotice()) { <p class="notice" role="status">{{ sessionNotice() }}</p> }
       </section>
+
+      <app-two-factor />
 
       <section class="card">
         <h2>{{ 'Appearance' | t }}</h2>

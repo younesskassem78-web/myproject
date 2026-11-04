@@ -160,7 +160,7 @@ def reject(app_id: UUID, admin: BillingStaff, conn: DB):
 def list_users(_: Staff, conn: DB, response: Response, q: str = "", limit: Limit = 500, offset: Offset = 0):
     """Customers and staff; `q` searches name, email, phone and city."""
     like = f"%{q.strip()}%"
-    return paged(conn, response, f"select {USER_COLS}, p.name as plan_name, "
+    return paged(conn, response, f"select {USER_COLS}, p.name as plan_name, u.totp_enabled_at is not null as two_factor, "
                         "(select coalesce(sum(i.amount), 0)::float8 from invoices i "
                         " where i.user_id = u.id and i.status = 'unpaid') as amount_due "
                         "from users u left join plans p on p.id = u.plan_id "

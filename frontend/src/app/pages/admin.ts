@@ -148,6 +148,7 @@ const PAGE = 50;
                         <button class="btn btn-sm btn-ghost" type="button" (click)="toggleActive(u)">{{ u.active ? 'Deactivate' : 'Activate' }}</button>
                       }
                       <button class="btn btn-sm btn-ghost" type="button" (click)="resetPassword(u)">Reset password</button>
+                      @if (u.two_factor) { <button class="btn btn-sm btn-ghost" type="button" (click)="resetTwoFactor(u)">Reset two-step</button> }
                       @if (u.id !== myId()) { <button class="btn btn-sm btn-danger" type="button" (click)="deleteUser(u)">Delete</button> }
                     }
                   </td>
@@ -312,6 +313,11 @@ export class Admin implements OnInit {
     if (balance === null || balance < 0) return this.fail('Enter a balance of 0 or more');
     this.run(this.api.createUser({ ...u, plan_id: u.plan_id || null, city: u.city.trim() || null, balance }),
       `Added ${u.email}.`, () => (this.newUser = blankUser()));
+  }
+  resetTwoFactor(u: AdminUser) {
+    if (confirm(`Turn off two-step sign-in for ${u.email}? Do this only if they lost their phone and recovery codes. They'll be signed out.`)) {
+      this.run(this.api.resetTwoFactor(u.id), `Two-step sign-in is off for ${u.email}. They can sign in with their password and turn it on again.`);
+    }
   }
   setRole(u: AdminUser, role: Role) { this.run(this.api.updateUser(u.id, { role }), `${u.email} is now: ${ROLE_LABEL[role]}.`); }
   setPlan(u: AdminUser, planId: string) { if (planId) this.run(this.api.updateUser(u.id, { plan_id: planId }), `Changed ${u.email}'s plan.`); }

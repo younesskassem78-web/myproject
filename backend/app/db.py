@@ -265,6 +265,19 @@ do $$ begin
     alter table users add constraint users_role_check check (role in ('customer', 'admin', 'billing', 'support'));
   end if;
 end $$;
+-- v8 (two-step sign-in): authenticator secret, last used code step (no replays), hashed one-time recovery codes,
+-- and the short-lived "password was right, now the code" step of signing in
+alter table users add column if not exists totp_secret text;
+alter table users add column if not exists totp_enabled_at timestamptz;
+alter table users add column if not exists totp_last_step bigint;
+alter table users add column if not exists totp_recovery text[] not null default '{}';
+create table if not exists login_challenges (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references users(id) on delete cascade,
+  expires_at timestamptz not null,
+  attempts int not null default 0,
+  ip text
+);
 """
 
 
@@ -326,7 +339,7 @@ def init(reset: bool = False) -> None:
     """Create tables and add demo data to an empty database."""
     with connect() as c:
         if reset:
-            c.execute("drop table if exists email_outbox, job_runs, data_addons, usage_alerts, login_failures, audit_log, speed_tests, ticket_messages, "
+            c.execute("drop table if exists login_challenges, email_outbox, job_runs, data_addons, usage_alerts, login_failures, audit_log, speed_tests, ticket_messages, "
                       "notifications, outages, payments, invoices, verifications, tickets, tokens, applications, "
                       "users, plans cascade")
         c.execute(SCHEMA)

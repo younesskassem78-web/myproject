@@ -121,19 +121,22 @@ def login(body: Login, conn: DB, request: Request):
         raise HTTPException(429, "Too many wrong passwords. Try again in 15 minutes or reset your password.")
     if fails["by_ip"] >= IP_LOCK_AFTER:
         raise HTTPException(429, "Too many sign-in attempts from your network. Try again in 15 minutes.")
-    user = conn.execute("select id, name, role, active, password_hash from users where email = %s", (email,)).fetchone()
+    user = conn.execute("select id, name, role, active, password_hash, totp_enabled_at from users where email = %s",
+                        (email,)).fetchone()
     if user and db.verify_password(body.password, user["password_hash"]):
         if not user["active"]:
             raise HTTPException(403, "Your account is deactivated. Contact support.")
-        token = secrets.token_urlsafe(32)
         conn.execute("delete from login_failures where email = %s", (email,))
         if db.needs_rehash(user["password_hash"]):
             conn.execute("update users set password_hash = %s where id = %s",
                          (db.hash_password(body.password), user["id"]))
-        conn.execute("delete from tokens where expires_at < now()")  # tidy up old sessions
-        conn.execute("insert into tokens (token, user_id, user_agent, ip) values (%s, %s, %s, %s)",
-                     (token_hash(token), user["id"], (request.headers.get("user-agent") or "")[:300], ip))
-        return {"token": token, "name": user["name"], "role": user["role"]}
+        if user["totp_enabled_at"]:
+            # Password right; the authenticator code comes next (POST /api/login/2fa) before any session exists.
+            conn.execute("delete from login_challenges where expires_at < now()")
+            challenge = conn.execute("insert into login_challenges (user_id, expires_at, ip) values "
+                                     "(%s, now() + interval '5 minutes', %s) returning id", (user["id"], ip)).fetchone()["id"]
+            return {"two_factor_required": True, "challenge": challenge}
+        return issue_session(conn, user, request)
     application = conn.execute("select status, password_hash from applications where email = %s "
                                "order by created_at desc limit 1", (email,)).fetchone()
     if application and db.verify_password(body.password, application["password_hash"]):
@@ -144,6 +147,15 @@ def login(body: Login, conn: DB, request: Request):
     conn.execute("delete from login_failures where created_at < now() - interval '1 day'")
     conn.execute("insert into login_failures (email, ip) values (%s, %s)", (email, ip))
     raise HTTPException(401, "Invalid email or password")
+
+
+def issue_session(conn, user: dict, request: Request) -> dict:
+    """A new signed-in session; only its fingerprint is stored."""
+    token = secrets.token_urlsafe(32)
+    conn.execute("delete from tokens where expires_at < now()")  # tidy up old sessions
+    conn.execute("insert into tokens (token, user_id, user_agent, ip) values (%s, %s, %s, %s)",
+                 (token_hash(token), user["id"], (request.headers.get("user-agent") or "")[:300], _client_ip(request)))
+    return {"token": token, "name": user["name"], "role": user["role"]}
 
 
 @router.post("/api/logout", status_code=204)

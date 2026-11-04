@@ -13,6 +13,13 @@ import { AdminOverview } from '../../core/models';
   template: `
     <h1>Overview</h1>
     @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
+    @if (twoFactorOff()) {
+      <section class="banner banner-warn" role="status">
+        <div><strong>Protect the console</strong>
+          <p>Your account can see customer details and payments. Turn on two-step sign-in.</p></div>
+        <a routerLink="/admin/account">Turn it on</a>
+      </section>
+    }
     @if (data(); as d) {
       <div class="kpis">
         <a class="kpi" routerLink="/admin/customers"><span>Active customers</span><strong>{{ d.kpis.active_customers }}</strong></a>
@@ -78,7 +85,10 @@ export class AdminOverviewPage implements OnInit {
   barHeight = (amount: number) => Math.max(2, (amount / this.max()) * 100);
   revenueLabel = () => 'Payments by month: ' + (this.data()?.revenue?.map(r => `${r.month} $${r.amount.toFixed(0)}`).join(', ') ?? '');
 
+  twoFactorOff = signal(false);
+
   ngOnInit() {
+    this.api.twoFactor().subscribe({ next: s => this.twoFactorOff.set(!s.enabled), error: () => {} });
     this.api.adminOverview().subscribe({ next: d => this.data.set(d), error: e => this.error.set(errorText(e)) });
   }
 }

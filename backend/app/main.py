@@ -5,7 +5,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from app import db, scheduler
-from app.routers import admin, billing, customer, network, public, reports, speedtest, support
+from app.routers import admin, billing, customer, network, public, reports, speedtest, support, twofactor
 
 PRODUCTION = os.environ.get("APP_ENV", "development") == "production"
 CORS_ORIGINS = [o.strip() for o in os.environ.get("CORS_ORIGINS", "http://localhost:4200").split(",") if o.strip()]
@@ -41,5 +41,5 @@ async def security_headers(request: Request, call_next):
     return response
 
 
-for r in (public, customer, billing, support, speedtest, network, admin, reports):
+for r in (public, customer, billing, support, speedtest, network, admin, reports, twofactor):
     app.include_router(r.router)

@@ -6,7 +6,7 @@ const APP = new URL('../src/app/', import.meta.url);
 const read = p => readFileSync(new URL(p, APP), 'utf8');
 const norm = s => s.replace(/\\'/g, "'").replace(/\s+/g, ' ').replace(/’/g, "'").trim();
 
-const FILES = ['app.ts', 'shared/notification-bell.ts', 'shared/lang-switch.ts', 'core/errors.ts',
+const FILES = ['app.ts', 'shared/notification-bell.ts', 'shared/lang-switch.ts', 'shared/two-factor.ts', 'core/errors.ts',
   ...'login apply forgot status dashboard billing invoice speed-test support ticket plan settings pay-dialog'.split(' ').map(f => `pages/${f}.ts`)];
 // Shown as-is in every language: names, addresses, examples.
 const SKIP = new Set(['myterra', 'MyTerra Internet', 'you@example.com', 'support&#64;myterra.app', 'MM/YY']);

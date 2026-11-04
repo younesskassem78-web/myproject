@@ -1,7 +1,7 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { map, tap } from 'rxjs';
-import { ApiService } from './api.service';
+import { Observable, map } from 'rxjs';
+import { ApiService, Signed } from './api.service';
 import { Role } from './models';
 import { STAFF_ROLES } from './permissions';
 
@@ -22,18 +22,25 @@ export class AuthService {
   isStaff() { return this.isLoggedIn() && STAFF_ROLES.includes(this.role()!); }
   isOwner() { return this.isLoggedIn() && this.role() === 'admin'; }
 
-  /** Signs in and returns the user's role. */
-  login(email: string, password: string) {
+  /** Signs in and returns the role, or `{ challenge }` when an authenticator code is needed next. */
+  login(email: string, password: string): Observable<Role | { challenge: string }> {
     return this.api.login(email, password).pipe(
-      tap(r => {
-        localStorage.setItem(TOKEN, r.token);
-        localStorage.setItem(NAME, r.name);
-        localStorage.setItem(ROLE, r.role);
-        this.name.set(r.name);
-        this.role.set(r.role);
-      }),
-      map(r => r.role),
+      map(r => 'two_factor_required' in r ? { challenge: r.challenge } : this.keep(r)),
     );
+  }
+
+  /** Second step of signing in: the code from the authenticator app (or a recovery code). */
+  completeTwoFactor(challenge: string, code: string): Observable<Role> {
+    return this.api.login2fa(challenge, code).pipe(map(r => this.keep(r)));
+  }
+
+  private keep(r: Signed): Role {
+    localStorage.setItem(TOKEN, r.token);
+    localStorage.setItem(NAME, r.name);
+    localStorage.setItem(ROLE, r.role);
+    this.name.set(r.name);
+    this.role.set(r.role);
+    return r.role;
   }
 
   logout() {
