@@ -12,9 +12,8 @@ from fastapi.responses import JSONResponse
 from psycopg import errors
 from pydantic import BaseModel, StringConstraints, field_validator, model_validator
 
-from app import db, notify
-from app.deps import (DB, DECLINED_TEST_CARD, PLAN_COLS, Card, Email, Password, Phone, Text, log, send_email_later,
-                      token_hash)
+from app import db, notify, outbox
+from app.deps import DB, DECLINED_TEST_CARD, PLAN_COLS, Card, Email, Password, Phone, Text, log, token_hash
 
 router = APIRouter()
 
@@ -313,7 +312,7 @@ def apply(body: Apply, conn: DB):
                  body.card.number[-4:], plan["price"])).fetchone()
         except errors.UniqueViolation:
             raise HTTPException(409, "You already applied with this email. Wait for approval.") from None
-    send_email_later(body.email, "We received your MyTerra application",
+    outbox.enqueue(conn, body.email, "We received your MyTerra application",
                      f"Hi {body.name},\n\nThanks for applying for {plan['name']}. We charged ${plan['price']:.2f} "
                   f"to your {body.card.brand()} ending in {body.card.number[-4:]} for the first month.\n\n"
                   "We'll email you as soon as your application is reviewed.\n\nMyTerra")

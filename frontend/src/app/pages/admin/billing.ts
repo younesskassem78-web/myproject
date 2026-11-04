@@ -3,7 +3,7 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/api.service';
 import { errorText } from '../../core/errors';
-import { AdminInvoice, InvoiceStatus } from '../../core/models';
+import { AdminInvoice, Automation, InvoiceStatus } from '../../core/models';
 
 @Component({
   selector: 'app-admin-billing',
@@ -16,6 +16,23 @@ import { AdminInvoice, InvoiceStatus } from '../../core/models';
     <p class="muted lead">Issues one bill per active customer for this month. Customers with autopay are charged right away. Running it again only bills customers who were missed. It also reminds customers whose bill is due within 3 days.</p>
     @if (notice()) { <p class="notice" role="status">{{ notice() }}</p> }
     @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
+
+    @if (auto(); as a) {
+      <section class="card automation">
+        <h2>Automatic</h2>
+        <dl class="details">
+          <div><dt>Monthly bills</dt>
+            <dd>{{ a.scheduler_on ? 'Issued automatically every day after ' + a.billing_hour + ':00 for anyone not yet billed this month, with due-soon reminders.' : 'Off on this server: use the button above.' }}</dd></div>
+          <div><dt>Last automatic run</dt>
+            <dd>{{ a.last_billing_at ? (a.last_billing_at | date: 'd MMM, HH:mm') + ': ' + a.last_billing_result : 'Not yet' }}</dd></div>
+          <div><dt>Emails</dt>
+            <dd>{{ a.emails.sent_today }} sent in the last day, {{ a.emails.waiting }} waiting
+              @if (a.emails.failed) {, <span class="warn-text">{{ a.emails.failed }} failed</span>
+                <button class="btn btn-sm btn-ghost" type="button" (click)="retryEmails()">Try again</button> }
+            </dd></div>
+        </dl>
+      </section>
+    }
 
     <div class="filters">
       <label class="inline-label">Status
@@ -67,7 +84,17 @@ export class AdminBilling implements OnInit {
 
   label = (s: string) => ({ unpaid: 'Unpaid', paid: 'Paid', overdue: 'Overdue', void: 'Void' } as Record<string, string>)[s];
 
-  ngOnInit() { this.load(); }
+  auto = signal<Automation | null>(null);
+
+  ngOnInit() { this.load(); this.loadAutomation(); }
+
+  loadAutomation() { this.api.automation().subscribe({ next: a => this.auto.set(a), error: () => {} }); }
+  retryEmails() {
+    this.api.retryEmails().subscribe({
+      next: r => { this.notice.set(`Sending ${r.retried} email${r.retried === 1 ? '' : 's'} again.`); this.loadAutomation(); },
+      error: e => this.error.set(errorText(e)),
+    });
+  }
 
   /** Searching and filtering happen on the server, so every bill is reachable, not just the first page. */
   load() {
@@ -94,6 +121,7 @@ export class AdminBilling implements OnInit {
         this.notice.set(r.reminded ? `${issued} Reminded ${r.reminded} customer${r.reminded === 1 ? '' : 's'} about bills due soon.` : issued);
         this.busy.set(false);
         this.load();
+        this.loadAutomation();
       },
       error: e => { this.error.set(errorText(e)); this.busy.set(false); },
     });

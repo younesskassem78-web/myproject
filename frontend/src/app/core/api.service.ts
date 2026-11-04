@@ -5,7 +5,7 @@ import { map } from 'rxjs';
 import {
   AdminInvoice, AdminOverview, AdminPlan, AdminTicket, AdminUser, Application, AuditEntry, BillingSummary, Invoice,
   InvoiceDetail, Me, Notification, Outage, OutageStatus, Payment, Plan, Role, SpeedResult, Ticket, TicketCategory,
-  TicketDetail, TicketMessage, TicketStatus, Usage, DataPack, EmailPrefs, Session, RevenueReport,
+  TicketDetail, TicketMessage, TicketStatus, Usage, DataPack, EmailPrefs, Session, RevenueReport, Automation,
 } from './models';
 
 // Same-origin: the dev server (proxy.conf.json) and nginx in production forward /api to the backend.
@@ -115,6 +115,8 @@ export class ApiService {
       .pipe(map(r => ({ items: r.body ?? [], total: Number(r.headers.get('X-Total-Count') ?? r.body?.length ?? 0) })));
   }
   runBilling() { return this.http.post<{ period: string; issued: number; autopaid: number; reminded: number }>(`${API}/admin/billing/run`, {}); }
+  automation() { return this.http.get<Automation>(`${API}/admin/automation`); }
+  retryEmails() { return this.http.post<{ retried: number }>(`${API}/admin/email-queue/retry`, {}); }
   adminOutages() { return this.http.get<Outage[]>(`${API}/admin/outages`); }
   openOutage(body: { city: string; title: string; message: string }) { return this.http.post<Outage>(`${API}/admin/outages`, body); }
   updateOutage(id: string, changes: { status?: OutageStatus; message?: string }) {

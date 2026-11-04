@@ -236,6 +236,28 @@ update tokens set token = encode(sha256(convert_to(token, 'UTF8')), 'hex') where
 alter table invoices add column if not exists reminded_at timestamptz;
 -- which server a speed test measured against ("Cloudflare, Beirut" or "MyTerra server")
 alter table speed_tests add column if not exists server text;
+-- v6 (automation): emails wait here until the background sender delivers them (survives restarts, never sent
+-- for a transaction that rolled back), and scheduled jobs record when they last ran
+create table if not exists email_outbox (
+  id uuid primary key default gen_random_uuid(),
+  to_addr text not null,
+  subject text not null,
+  body text not null,
+  status text not null default 'pending' check (status in ('pending', 'sending', 'sent', 'failed')),
+  attempts int not null default 0,
+  last_error text,
+  next_attempt_at timestamptz not null default now(),
+  locked_at timestamptz,
+  created_at timestamptz not null default now(),
+  sent_at timestamptz
+);
+create index if not exists email_outbox_due on email_outbox (status, next_attempt_at);
+create table if not exists job_runs (
+  name text primary key,
+  last_run_on date,
+  last_run_at timestamptz,
+  last_result text
+);
 """
 
 
@@ -297,7 +319,7 @@ def init(reset: bool = False) -> None:
     """Create tables and add demo data to an empty database."""
     with connect() as c:
         if reset:
-            c.execute("drop table if exists data_addons, usage_alerts, login_failures, audit_log, speed_tests, ticket_messages, "
+            c.execute("drop table if exists email_outbox, job_runs, data_addons, usage_alerts, login_failures, audit_log, speed_tests, ticket_messages, "
                       "notifications, outages, payments, invoices, verifications, tickets, tokens, applications, "
                       "users, plans cascade")
         c.execute(SCHEMA)

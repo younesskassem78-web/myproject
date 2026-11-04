@@ -125,7 +125,12 @@ def issue_invoice(conn, user_id: UUID, period: date, plan_name: str, amount: flo
 
 @router.post("/api/admin/billing/run")
 def run_billing(admin: Admin, conn: DB):
-    """Issue this month's invoice to every active customer who doesn't have one yet. Safe to run twice."""
+    return issue_month(conn, admin["email"])
+
+
+def issue_month(conn, actor: str) -> dict:
+    """Issue this month's invoice to every active customer who doesn't have one yet, charge autopay and send
+    due-soon reminders. Safe to run any number of times. `actor` is who started it, for the audit log."""
     period = date.today().replace(day=1)
     issued = autopaid = 0
     with conn.transaction():
@@ -152,7 +157,7 @@ def run_billing(admin: Admin, conn: DB):
                                    f"{inv['number']}: ${c['price']:.2f}, due in {DUE_DAYS} days.", "/billing",
                                    email_to=c["email"])
         reminded = send_due_reminders(conn)
-        events.audit(conn, admin, "ran billing",
+        events.audit(conn, {"email": actor}, "ran billing",
                      f"{period:%B %Y}: {issued} invoices, {autopaid} autopaid, {reminded} reminders")
     return {"period": period, "issued": issued, "autopaid": autopaid, "reminded": reminded}
 
@@ -189,3 +194,21 @@ def all_invoices(_: Admin, conn: DB, response: Response, q: str = "",
                  f"join users u on u.id = i.user_id where {STATUS_FILTER[status]} "
                  "and (%s = '' or u.name ilike %s or u.email ilike %s or i.number ilike %s) "
                  "order by i.period desc, i.issued_at desc, i.id", (q.strip(), like, like, like), limit, offset)
+
+
+@router.get("/api/admin/automation")
+def automation(_: Admin, conn: DB):
+    """What the background jobs are doing: last automatic billing run and the email queue."""
+    from app import outbox, scheduler
+    run = conn.execute("select last_run_at, last_result from job_runs where name = 'daily_billing'").fetchone()
+    return {"scheduler_on": scheduler.enabled() and scheduler.auto_billing(), "billing_hour": scheduler.BILLING_HOUR,
+            "last_billing_at": run["last_run_at"] if run else None, "last_billing_result": run["last_result"] if run else None,
+            "emails": outbox.stats(conn)}
+
+
+@router.post("/api/admin/email-queue/retry")
+def retry_failed_emails(admin: Admin, conn: DB):
+    n = conn.execute("update email_outbox set status = 'pending', attempts = 0, next_attempt_at = now() "
+                     "where status = 'failed'").rowcount
+    events.audit(conn, admin, "retried failed emails", str(n))
+    return {"retried": n}

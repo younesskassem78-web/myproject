@@ -12,6 +12,7 @@ if not url.rsplit("/", 1)[-1].endswith("_e2e"):
     sys.exit("Refusing to start: E2E_DATABASE_URL must point at a database whose name ends in _e2e.")
 os.environ["DATABASE_URL"] = url
 os.environ["DEMO_DATA"] = "true"
+os.environ["SCHEDULER_ENABLED"] = "false"  # no automatic billing in the middle of a test run
 os.environ["PASSWORD_ITERATIONS"] = os.environ.get("PASSWORD_ITERATIONS", "1000")
 for key in ("SMTP_HOST", "SMTP_USER", "SMTP_PASSWORD", "EMAIL_FROM", "TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_FROM"):
     os.environ.pop(key, None)  # browser tests never send real email or SMS

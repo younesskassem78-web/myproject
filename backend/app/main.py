@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
-from app import db
+from app import db, scheduler
 from app.routers import admin, billing, customer, network, public, reports, speedtest, support
 
 PRODUCTION = os.environ.get("APP_ENV", "development") == "production"
@@ -14,7 +14,12 @@ CORS_ORIGINS = [o.strip() for o in os.environ.get("CORS_ORIGINS", "http://localh
 @asynccontextmanager
 async def lifespan(_):
     db.init()
+    jobs = scheduler.Scheduler() if scheduler.enabled() else None
+    if jobs:
+        jobs.start()
     yield
+    if jobs:
+        jobs.stop()
     if db._pool:
         db._pool.close()
 

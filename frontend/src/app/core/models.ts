@@ -23,6 +23,10 @@ export interface RevenueReport {
   by_month: { month: string; total: number }[];
   bills: { issued: number; billed: number; paid: number; unpaid: number };
 }
+export interface Automation {
+  scheduler_on: boolean; billing_hour: number; last_billing_at: string | null; last_billing_result: string | null;
+  emails: { waiting: number; failed: number; sent_today: number };
+}
 export type EmailTopic = 'billing' | 'outage' | 'ticket' | 'installation';
 export type EmailPrefs = Record<EmailTopic, boolean>;
 export interface Session { id: string; device: string; ip: string | null; created_at: string; last_used_at: string; current: boolean; }
