@@ -49,6 +49,26 @@ describe('Home', () => {
     expect(recommend([], { gb: 1, mbps: 1 })).toBeNull();
   });
 
+  it('slideshow moves on by itself, loops, and stops when paused or held', async () => {
+    const fixture = await setup();
+    const c = fixture.componentInstance;
+    c.paused.set(false);
+    const goTo = vi.spyOn(c, 'goTo').mockImplementation(i => c.slide.set(i));
+    const start = Date.now();
+    c.autoAdvance(start + 5001);
+    expect(goTo).toHaveBeenLastCalledWith(1);
+    c.slide.set(c.slides.length - 1);
+    c.autoAdvance(start + 20000);
+    expect(goTo).toHaveBeenLastCalledWith(0); // back to the first photo
+    goTo.mockClear();
+    c.hold.set(true); // mouse over or keyboard focus
+    c.autoAdvance(start + 60000);
+    c.hold.set(false);
+    c.paused.set(true); // pause button
+    c.autoAdvance(start + 90000);
+    expect(goTo).not.toHaveBeenCalled();
+  });
+
   it('plan finder updates when the household changes', async () => {
     const fixture = await setup();
     const c = fixture.componentInstance;

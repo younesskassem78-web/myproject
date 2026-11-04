@@ -1,5 +1,5 @@
 import { CurrencyPipe } from '@angular/common';
-import { Component, ElementRef, OnInit, computed, inject, signal, viewChild } from '@angular/core';
+import { Component, ElementRef, OnDestroy, OnInit, computed, inject, signal, viewChild } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { ApiService } from '../core/api.service';
 import { AuthService } from '../core/auth.service';
@@ -86,11 +86,15 @@ const SLIDES = [
           <div class="fiber-line" aria-hidden="true"><span></span></div>
         </section>
 
-        <section class="home-section" aria-labelledby="life-title">
+        <section class="home-section" aria-labelledby="life-title" (mouseenter)="hold.set(true)" (mouseleave)="hold.set(false)"
+                 (focusin)="hold.set(true)" (focusout)="hold.set(false)">
           <div class="section-head">
             <div><h2 id="life-title">{{ 'Made for how you live' | t }}</h2>
               <p class="muted">{{ 'Swipe or drag to see more.' | t }}</p></div>
             <div class="carousel-arrows">
+              <button type="button" class="icon-btn round" (click)="paused.set(!paused())" [attr.aria-pressed]="paused()"
+                      [attr.aria-label]="(paused() ? 'Play slideshow' : 'Pause slideshow') | t">
+                <app-icon [name]="paused() ? 'play' : 'pause'" /></button>
               <button type="button" class="icon-btn round" (click)="move(-1)" [disabled]="slide() === 0" [attr.aria-label]="'Previous' | t">
                 <app-icon name="arrow" [class.flip]="!rtl" /></button>
               <button type="button" class="icon-btn round" (click)="move(1)" [disabled]="slide() === slides.length - 1" [attr.aria-label]="'Next' | t">
@@ -227,7 +231,7 @@ const SLIDES = [
     </div>
   `,
 })
-export class Home implements OnInit {
+export class Home implements OnInit, OnDestroy {
   private api = inject(ApiService);
   auth = inject(AuthService);
   readonly rtl = RTL;
@@ -257,6 +261,18 @@ export class Home implements OnInit {
     return ps.length > 1 ? ps.reduce((a, b) => (b.price / b.data_gb < a.price / a.data_gb ? b : a)).id : null;
   });
 
+  // Slideshow: moves on every 5 s, looping. Stops while the visitor hovers, focuses, drags or has another tab open,
+  // and never starts for people who ask for reduced motion. The pause button satisfies WCAG 2.2.2.
+  static readonly AUTOPLAY_MS = 5000;
+  paused = signal(typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches);
+  hold = signal(false);
+  private lastMove = Date.now();
+  private timer?: ReturnType<typeof setInterval>;
+  autoAdvance(now = Date.now()) {
+    if (this.paused() || this.hold() || this.dragging() || document.hidden) { this.lastMove = now; return; }
+    if (now - this.lastMove >= Home.AUTOPLAY_MS) this.goTo((this.slide() + 1) % this.slides.length);
+  }
+
   // carousel: native scroll-snap (touch swipe for free) + mouse dragging, arrows, dots
   private track = viewChild.required<ElementRef<HTMLElement>>('track');
   slide = signal(0);
@@ -273,6 +289,7 @@ export class Home implements OnInit {
     this.slide.set(Math.min(this.slides.length - 1, Math.round(Math.abs(this.track().nativeElement.scrollLeft) / this.slideWidth())));
   }
   goTo(i: number) {
+    this.lastMove = Date.now(); // any move (auto, arrows, dots) restarts the 5-second wait
     const el = this.track().nativeElement;
     el.scrollTo({ left: (this.rtl ? -1 : 1) * i * this.slideWidth(), behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
   }
@@ -323,7 +340,10 @@ export class Home implements OnInit {
   ];
 
   ngOnInit() {
+    this.timer = setInterval(() => this.autoAdvance(), 500);
     this.api.plans().subscribe({ next: p => { this.plans.set(p); this.plansLoaded.set(true); }, error: () => this.plansLoaded.set(true) });
     this.api.status().subscribe({ next: s => this.outages.set(s.active.length), error: () => {} });
   }
+
+  ngOnDestroy() { clearInterval(this.timer); }
 }

@@ -517,4 +517,6 @@ export const AR: Record<string, string> = {
   'A woman working on a laptop at a desk at home': 'امرأة تعمل على حاسوب محمول على مكتب في المنزل',
   'A gamer with a headset playing at a computer': 'لاعب يضع سماعات ويلعب على الحاسوب',
   'A white Wi-Fi router with a network cable plugged in': 'راوتر واي فاي أبيض موصول بكابل شبكة',
+  'Play slideshow': 'شغّل عرض الصور',
+  'Pause slideshow': 'أوقف عرض الصور مؤقتاً',
 };

@@ -517,4 +517,6 @@ export const FR: Record<string, string> = {
   'A woman working on a laptop at a desk at home': 'Une femme travaille sur un ordinateur portable chez elle',
   'A gamer with a headset playing at a computer': 'Un joueur avec un casque devant un ordinateur',
   'A white Wi-Fi router with a network cable plugged in': 'Un routeur Wi-Fi blanc avec un câble réseau branché',
+  'Play slideshow': 'Lancer le diaporama',
+  'Pause slideshow': 'Mettre le diaporama en pause',
 };
