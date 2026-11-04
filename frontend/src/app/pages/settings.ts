@@ -1,4 +1,5 @@
 import { DatePipe } from '@angular/common';
+import { TPipe, t } from '../core/i18n';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../core/api.service';
@@ -8,38 +9,38 @@ import { ThemeService } from '../core/theme.service';
 
 @Component({
   selector: 'app-settings',
-  imports: [FormsModule, DatePipe],
+  imports: [TPipe, FormsModule, DatePipe],
   template: `
-    <h1>Settings</h1>
+    <h1>{{ 'Settings' | t }}</h1>
     <div class="settings-grid">
       <section class="card">
-        <h2>Your details</h2>
+        <h2>{{ 'Your details' | t }}</h2>
         @if (me(); as m) {
           <dl class="details">
-            <div><dt>Name</dt><dd>{{ m.name }}</dd></div>
-            <div><dt>Email</dt><dd>{{ m.email }}</dd></div>
-            <div><dt>Mobile</dt><dd>{{ m.phone || 'Not set' }}</dd></div>
-            <div><dt>Address</dt><dd>{{ m.address || 'Not set' }}</dd></div>
+            <div><dt>{{ 'Name' | t }}</dt><dd>{{ m.name }}</dd></div>
+            <div><dt>{{ 'Email' | t }}</dt><dd>{{ m.email }}</dd></div>
+            <div><dt>{{ 'Mobile' | t }}</dt><dd>{{ m.phone || 'Not set' }}</dd></div>
+            <div><dt>{{ 'Address' | t }}</dt><dd>{{ m.address || 'Not set' }}</dd></div>
           </dl>
-          <p class="hint">Moving or changed number? Open a support ticket and we'll update it.</p>
+          <p class="hint">{{ "Moving or changed number? Open a support ticket and we'll update it." | t }}</p>
         } @else {
-          <p class="muted" aria-busy="true">Loading…</p>
+          <p class="muted" aria-busy="true">{{ 'Loading…' | t }}</p>
         }
       </section>
 
       <form class="card" (ngSubmit)="changePassword()">
-        <h2>Change password</h2>
-        <label>Current password <input name="current" type="password" autocomplete="current-password" [(ngModel)]="current" /></label>
-        <label>New password <input name="password" type="password" autocomplete="new-password" [(ngModel)]="password" />
-          <span class="hint">At least 8 characters. Other devices will be signed out.</span></label>
+        <h2>{{ 'Change password' | t }}</h2>
+        <label>{{ 'Current password' | t }} <input name="current" type="password" autocomplete="current-password" [(ngModel)]="current" /></label>
+        <label>{{ 'New password' | t }} <input name="password" type="password" autocomplete="new-password" [(ngModel)]="password" />
+          <span class="hint">{{ 'At least 8 characters. Other devices will be signed out.' | t }}</span></label>
         @if (pwError()) { <p class="error" role="alert">{{ pwError() }}</p> }
-        @if (pwDone()) { <p class="notice" role="status">Password changed.</p> }
-        <button class="btn" type="submit" [disabled]="busy()">Change password</button>
+        @if (pwDone()) { <p class="notice" role="status">{{ 'Password changed.' | t }}</p> }
+        <button class="btn" type="submit" [disabled]="busy()">{{ 'Change password' | t }}</button>
       </form>
 
       <section class="card">
-        <h2>Email me about</h2>
-        <p class="hint">You always see these in the app. Sign-in codes, password resets and account emails are always sent.</p>
+        <h2>{{ 'Email me about' | t }}</h2>
+        <p class="hint">{{ 'You always see these in the app. Sign-in codes, password resets and account emails are always sent.' | t }}</p>
         @if (prefs(); as p) {
           <div class="checks">
             @for (t of topics; track t.key) {
@@ -49,35 +50,35 @@ import { ThemeService } from '../core/theme.service';
               </label>
             }
           </div>
-        } @else { <p class="muted" aria-busy="true">Loading…</p> }
+        } @else { <p class="muted" aria-busy="true">{{ 'Loading…' | t }}</p> }
         @if (prefsNotice()) { <p class="notice" role="status">{{ prefsNotice() }}</p> }
         @if (prefsError()) { <p class="error" role="alert">{{ prefsError() }}</p> }
       </section>
 
       <section class="card">
-        <h2>Signed-in devices</h2>
+        <h2>{{ 'Signed-in devices' | t }}</h2>
         <ul class="history">
           @for (s of sessions(); track s.id) {
             <li>
-              <span>{{ s.device }} @if (s.current) { <span class="status status-paid">This device</span> }
-                <br /><span class="muted">Last active {{ s.last_used_at | date: 'd MMM, HH:mm' }}{{ s.ip ? ', ' + s.ip : '' }}</span></span>
+              <span>{{ s.device }} @if (s.current) { <span class="status status-paid">{{ 'This device' | t }}</span> }
+                <br /><span class="muted">{{ 'Last active {date}' | t: { date: (s.last_used_at | date: 'd MMM, HH:mm') } }}{{ s.ip ? ', ' + s.ip : '' }}</span></span>
               @if (!s.current) {
-                <button class="btn btn-sm btn-ghost" type="button" (click)="endSession(s)" [attr.aria-label]="'Sign out ' + s.device">Sign out</button>
+                <button class="btn btn-sm btn-ghost" type="button" (click)="endSession(s)" [attr.aria-label]="'Sign out {device}' | t: { device: s.device }">{{ 'Sign out' | t }}</button>
               }
             </li>
-          } @empty { <li class="muted">Loading…</li> }
+          } @empty { <li class="muted">{{ 'Loading…' | t }}</li> }
         </ul>
         @if (sessions().length > 1) {
-          <button class="btn btn-ghost" type="button" (click)="endOthers()">Sign out all other devices</button>
+          <button class="btn btn-ghost" type="button" (click)="endOthers()">{{ 'Sign out all other devices' | t }}</button>
         }
         @if (sessionNotice()) { <p class="notice" role="status">{{ sessionNotice() }}</p> }
       </section>
 
       <section class="card">
-        <h2>Appearance</h2>
-        <p>{{ theme.theme() === 'dark' ? 'Dark mode is on.' : 'Light mode is on.' }}</p>
+        <h2>{{ 'Appearance' | t }}</h2>
+        <p>{{ (theme.theme() === 'dark' ? 'Dark mode is on.' : 'Light mode is on.') | t }}</p>
         <button class="btn btn-ghost" type="button" (click)="theme.toggle()">
-          Use {{ theme.theme() === 'dark' ? 'light' : 'dark' }} mode
+          {{ (theme.theme() === 'dark' ? 'Use light mode' : 'Use dark mode') | t }}
         </button>
       </section>
     </div>
@@ -135,8 +136,8 @@ export class Settings implements OnInit {
 
   changePassword() {
     this.pwDone.set(false);
-    if (!this.current) { this.pwError.set('Enter your current password'); return; }
-    if (this.password.length < 8) { this.pwError.set('Choose a new password with at least 8 characters'); return; }
+    if (!this.current) { this.pwError.set(t('Enter your current password')); return; }
+    if (this.password.length < 8) { this.pwError.set(t('Choose a new password with at least 8 characters')); return; }
     this.busy.set(true);
     this.pwError.set('');
     this.api.changePassword(this.current, this.password).subscribe({

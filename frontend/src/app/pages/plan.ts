@@ -1,4 +1,5 @@
 import { CurrencyPipe } from '@angular/common';
+import { TPipe } from '../core/i18n';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { forkJoin } from 'rxjs';
 import { ApiService } from '../core/api.service';
@@ -7,26 +8,26 @@ import { Plan } from '../core/models';
 
 @Component({
   selector: 'app-plan',
-  imports: [CurrencyPipe],
+  imports: [TPipe, CurrencyPipe],
   template: `
-    <h1>Your plan</h1>
-    <p class="muted lead">Switch any time. The change starts today and your next bill uses the new price.</p>
+    <h1>{{ 'Your plan' | t }}</h1>
+    <p class="muted lead">{{ 'Switch any time. The change starts today and your next bill uses the new price.' | t }}</p>
     @if (notice()) { <p class="notice" role="status">{{ notice() }}</p> }
     @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
     <div class="plan-grid">
       @for (p of plans(); track p.id) {
         <section class="card plan-card" [class.current]="p.id === currentId()">
-          @if (p.id === currentId()) { <span class="plan-badge">Your plan{{ p.active ? '' : ', no longer sold' }}</span> }
+          @if (p.id === currentId()) { <span class="plan-badge">{{ (p.active ? 'Your plan' : 'Your plan, no longer sold') | t }}</span> }
           <h2>{{ p.name }}</h2>
-          <p class="plan-price">{{ p.price | currency: 'USD' : 'symbol' : '1.0-2' }}<span>/month</span></p>
+          <p class="plan-price">{{ p.price | currency: 'USD' : 'symbol' : '1.0-2' }}<span>{{ '/month' | t }}</span></p>
           <ul>
-            <li><strong>{{ p.speed_mbps >= 1000 ? (p.speed_mbps / 1000) + ' Gbps' : p.speed_mbps + ' Mbps' }}</strong> download speed</li>
-            <li><strong>{{ p.data_gb >= 1000 ? 'Unlimited' : p.data_gb + ' GB' }}</strong> data a month</li>
-            <li>Free router and installation</li>
+            <li><strong>{{ p.speed_mbps >= 1000 ? (p.speed_mbps / 1000) + ' Gbps' : p.speed_mbps + ' Mbps' }}</strong> {{ 'download speed' | t }}</li>
+            <li><strong>{{ p.data_gb >= 1000 ? 'Unlimited' : p.data_gb + ' GB' }}</strong> {{ 'data a month' | t }}</li>
+            <li>{{ 'Free router and installation' | t }}</li>
           </ul>
           @if (p.id !== currentId()) {
             <button class="btn" [class.btn-ghost]="p.price < currentPrice()" type="button" (click)="choose(p)" [disabled]="busy()">
-              {{ p.price > currentPrice() ? 'Upgrade' : 'Switch' }} ({{ diff(p) }})
+              {{ (p.price > currentPrice() ? 'Upgrade' : 'Switch') | t }} ({{ diff(p) }})
             </button>
           }
         </section>

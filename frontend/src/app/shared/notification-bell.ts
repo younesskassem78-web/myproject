@@ -1,4 +1,5 @@
 import { DatePipe } from '@angular/common';
+import { TPipe } from '../core/i18n';
 import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { ApiService } from '../core/api.service';
@@ -10,26 +11,26 @@ const REFRESH_MS = 60_000;
 /** Bell with unread count. Opening it marks everything read. */
 @Component({
   selector: 'app-notification-bell',
-  imports: [DatePipe, Icon],
+  imports: [TPipe, DatePipe, Icon],
   host: { '(document:keydown.escape)': 'open.set(false)' },
   template: `
     <div class="bell">
       <button type="button" class="icon-btn" (click)="toggle()" [attr.aria-expanded]="open()"
-              [attr.aria-label]="unread() ? 'Notifications, ' + unread() + ' unread' : 'Notifications'">
+              [attr.aria-label]="unread() ? ('Notifications, {n} unread' | t: { n: unread() }) : ('Notifications' | t)">
         <app-icon name="bell" />
         @if (unread()) { <span class="bell-count" aria-hidden="true">{{ unread() > 9 ? '9+' : unread() }}</span> }
       </button>
       @if (open()) {
-        <div class="bell-panel" role="dialog" aria-label="Notifications">
-          <div class="bell-head"><strong>Notifications</strong></div>
+        <div class="bell-panel" role="dialog" [attr.aria-label]="'Notifications' | t">
+          <div class="bell-head"><strong>{{ 'Notifications' | t }}</strong></div>
           @for (n of items(); track n.id) {
             <button type="button" class="bell-item" [class.unseen]="unseen().has(n.id)" (click)="go(n)">
-              <span class="bell-title">{{ n.title }}</span>
+              <span class="bell-title">{{ n.title | t }}</span>
               <span class="bell-body">{{ n.body }}</span>
               <span class="bell-time">{{ n.created_at | date: 'd MMM, HH:mm' }}</span>
             </button>
           } @empty {
-            <p class="bell-empty">You're all caught up.</p>
+            <p class="bell-empty">{{ "You're all caught up." | t }}</p>
           }
         </div>
       }

@@ -1,4 +1,5 @@
 import { CurrencyPipe, DatePipe, DecimalPipe } from '@angular/common';
+import { TPipe, t } from '../core/i18n';
 import { Component, OnInit, computed, inject, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -25,7 +26,7 @@ const INSTALL_STEPS: { key: InstallStatus; label: string }[] = [
 
 @Component({
   selector: 'app-dashboard',
-  imports: [CurrencyPipe, DatePipe, DecimalPipe, FormsModule, RouterLink, UsageChart, Icon, PayDialog],
+  imports: [TPipe, CurrencyPipe, DatePipe, DecimalPipe, FormsModule, RouterLink, UsageChart, Icon, PayDialog],
   template: `
     @if (loadError()) {
       <p class="error" role="alert">{{ loadError() }}</p>
@@ -35,36 +36,36 @@ const INSTALL_STEPS: { key: InstallStatus; label: string }[] = [
           <app-icon name="alert" />
           <div>
             <strong>{{ o.title }}</strong>
-            <p>{{ o.message }} <span class="muted">Updated {{ o.updated_at | date: 'HH:mm' }}.</span></p>
+            <p>{{ o.message }} <span class="muted">{{ 'Updated {time}.' | t: { time: (o.updated_at | date: 'HH:mm') } }}</span></p>
           </div>
-          <a routerLink="/status">Network status</a>
+          <a routerLink="/status">{{ 'Network status' | t }}</a>
         </section>
       }
 
       @if (me()!.install_status && me()!.install_status !== 'installed') {
         <section class="card install">
-          <h2>Your installation</h2>
+          <h2>{{ 'Your installation' | t }}</h2>
           <ol class="steps">
             @for (s of steps; track s.key; let i = $index) {
-              <li [class.done]="i <= installIndex()" [attr.aria-current]="i === installIndex() ? 'step' : null">{{ s.label }}</li>
+              <li [class.done]="i <= installIndex()" [attr.aria-current]="i === installIndex() ? 'step' : null">{{ s.label | t }}</li>
             }
           </ol>
           @if (me()!.install_date) {
-            <p>Technician visit: <strong>{{ me()!.install_date | date: 'EEEE d MMMM' }}</strong>, between 9:00 and 17:00.</p>
+            <p>{{ 'Technician visit:' | t }} <strong>{{ me()!.install_date | date: 'EEEE d MMMM' }}</strong>{{ ', between 9:00 and 17:00.' | t }}</p>
             @if (!moving()) {
               @if (canMove()) {
-                <button type="button" class="btn btn-ghost btn-sm" (click)="startMove()">Change date</button>
+                <button type="button" class="btn btn-ghost btn-sm" (click)="startMove()">{{ 'Change date' | t }}</button>
               } @else {
-                <p class="hint">{{ changesLeft() <= 0 ? 'You’ve changed this visit 3 times.' : 'The visit is less than 24 hours away.' }}
-                  To change it, <a routerLink="/support">open a support ticket</a>.</p>
+                <p class="hint">{{ (changesLeft() <= 0 ? 'You’ve changed this visit 3 times.' : 'The visit is less than 24 hours away.') | t }}
+                  {{ 'To change it,' | t }} <a routerLink="/support">{{ 'open a support ticket' | t }}</a>.</p>
               }
             } @else {
               <form class="inline-form" (ngSubmit)="saveMove()">
-                <label>New date <input type="date" name="newDate" [min]="minDate" [max]="maxDate" [(ngModel)]="newDate" /></label>
-                <button class="btn btn-sm" type="submit" [disabled]="busy()">{{ busy() ? 'Saving…' : 'Save' }}</button>
-                <button class="link-btn" type="button" (click)="moving.set(false)">Cancel</button>
+                <label>{{ 'New date' | t }} <input type="date" name="newDate" [min]="minDate" [max]="maxDate" [(ngModel)]="newDate" /></label>
+                <button class="btn btn-sm" type="submit" [disabled]="busy()">{{ (busy() ? 'Saving…' : 'Save') | t }}</button>
+                <button class="link-btn" type="button" (click)="moving.set(false)">{{ 'Cancel' | t }}</button>
               </form>
-              <p class="hint">You can change the date {{ changesLeft() }} more {{ changesLeft() === 1 ? 'time' : 'times' }}.</p>
+              <p class="hint">{{ (changesLeft() === 1 ? 'You can change the date 1 more time.' : 'You can change the date {n} more times.') | t: { n: changesLeft() } }}</p>
             }
             @if (moveError()) { <p class="error" role="alert">{{ moveError() }}</p> }
             @if (moveNotice()) { <p class="notice" role="status">{{ moveNotice() }}</p> }
@@ -73,27 +74,27 @@ const INSTALL_STEPS: { key: InstallStatus; label: string }[] = [
       }
 
       <section class="usage-hero">
-        <p class="plan-line">{{ me()!.plan?.name }} &nbsp;/&nbsp; {{ me()!.plan?.speed_mbps }} Mbps &nbsp;/&nbsp;
-          {{ me()!.plan?.price | currency: 'USD' : 'symbol' : '1.0-2' }}/month</p>
-        <h1>{{ usage()!.used_gb | number: '1.2-2' }} GB of {{ usage()!.limit_gb }} GB used</h1>
-        <div class="fiber" role="progressbar" aria-label="Data used this month"
+        <p class="plan-line">{{ me()!.plan?.name }} &nbsp;/&nbsp; {{ '{n} Mbps' | t: { n: me()!.plan?.speed_mbps } }} &nbsp;/&nbsp;
+          {{ me()!.plan?.price | currency: 'USD' : 'symbol' : '1.0-2' }}{{ '/month' | t }}</p>
+        <h1>{{ '{used} GB of {limit} GB used' | t: { used: (usage()!.used_gb | number: '1.2-2'), limit: usage()!.limit_gb } }}</h1>
+        <div class="fiber" role="progressbar" [attr.aria-label]="'Data used this month' | t"
              [attr.aria-valuenow]="percent()" aria-valuemin="0" aria-valuemax="100">
           <div class="fiber-light" [class.full]="percent() >= 100" [style.width.%]="percent()"></div>
         </div>
-        <p class="muted">{{ left() | number: '1.2-2' }} GB left, resets on the 1st.
-          @if (usage()!.extra_gb) { Includes {{ usage()!.extra_gb }} GB extra data bought this month. }</p>
+        <p class="muted">{{ '{left} GB left, resets on the 1st.' | t: { left: (left() | number: '1.2-2') } }}
+          @if (usage()!.extra_gb) { {{ 'Includes {n} GB extra data bought this month.' | t: { n: usage()!.extra_gb } }} }</p>
         @if (!showPacks()) {
-          <button type="button" class="btn btn-ghost btn-sm" [class.btn-amber]="percent() >= 80" (click)="openPacks()">Add extra data</button>
+          <button type="button" class="btn btn-ghost btn-sm" [class.btn-amber]="percent() >= 80" (click)="openPacks()">{{ 'Add extra data' | t }}</button>
         } @else {
-          <div class="packs" role="group" aria-label="Extra data packs">
-            <p class="muted">Extra data for the rest of this month. Pay once, no change to your plan.</p>
+          <div class="packs" role="group" [attr.aria-label]="'Extra data packs' | t">
+            <p class="muted">{{ 'Extra data for the rest of this month. Pay once, no change to your plan.' | t }}</p>
             <div class="pack-row">
               @for (p of packs(); track p.gb) {
                 <button type="button" class="pack" (click)="choose(p)">
-                  <strong>{{ p.gb }} GB</strong><span>{{ p.price | currency: 'USD' : 'symbol' : '1.0-2' }}</span>
+                  <strong>{{ '{n} GB' | t: { n: p.gb } }}</strong><span>{{ p.price | currency: 'USD' : 'symbol' : '1.0-2' }}</span>
                 </button>
-              } @empty { <span class="muted">Loading…</span> }
-              <button type="button" class="link-btn" (click)="showPacks.set(false)">Cancel</button>
+              } @empty { <span class="muted">{{ 'Loading…' | t }}</span> }
+              <button type="button" class="link-btn" (click)="showPacks.set(false)">{{ 'Cancel' | t }}</button>
             </div>
           </div>
         }
@@ -102,36 +103,36 @@ const INSTALL_STEPS: { key: InstallStatus; label: string }[] = [
 
       <div class="dash-grid">
         <section class="card">
-          <h2>Daily use</h2>
+          <h2>{{ 'Daily use' | t }}</h2>
           <app-usage-chart [days]="usage()!.days" />
         </section>
 
         <div class="side-cards">
           <section class="panel-dark">
-            <h2>Amount due</h2>
+            <h2>{{ 'Amount due' | t }}</h2>
             <p class="balance-amount">{{ bill()!.amount_due | currency }}</p>
             @if (bill()!.amount_due > 0 && bill()!.next_invoice; as inv) {
               <p [class.overdue-text]="inv.status === 'overdue'">
-                {{ inv.status === 'overdue' ? 'Overdue since' : 'Due' }} {{ inv.due_date | date: 'd MMMM' }}
+                {{ (inv.status === 'overdue' ? 'Overdue since {date}' : 'Due {date}') | t: { date: (inv.due_date | date: 'd MMMM') } }}
               </p>
-              <a class="btn btn-amber" routerLink="/billing">Pay now</a>
+              <a class="btn btn-amber" routerLink="/billing">{{ 'Pay now' | t }}</a>
             } @else {
-              <p>You're all paid up.{{ bill()!.autopay ? ' Autopay is on.' : '' }}</p>
-              <a class="btn btn-amber" routerLink="/billing">View bills</a>
+              <p>{{ "You're all paid up." | t }}{{ bill()!.autopay ? ' ' + ('Autopay is on.' | t) : '' }}</p>
+              <a class="btn btn-amber" routerLink="/billing">{{ 'View bills' | t }}</a>
             }
           </section>
-          <nav class="quick card" aria-label="Quick actions">
-            <a routerLink="/speed-test"><app-icon name="gauge" /> Test my speed</a>
-            <a routerLink="/support"><app-icon name="help" /> Report a problem</a>
-            <a routerLink="/plan"><app-icon name="layers" /> Change plan</a>
+          <nav class="quick card" [attr.aria-label]="'Quick actions' | t">
+            <a routerLink="/speed-test"><app-icon name="gauge" /> {{ 'Test my speed' | t }}</a>
+            <a routerLink="/support"><app-icon name="help" /> {{ 'Report a problem' | t }}</a>
+            <a routerLink="/plan"><app-icon name="layers" /> {{ 'Change plan' | t }}</a>
           </nav>
         </div>
       </div>
     } @else {
-      <div class="skeleton" aria-busy="true" aria-label="Loading your account"></div>
+      <div class="skeleton" aria-busy="true" [attr.aria-label]="'Loading your account' | t"></div>
     }
-    <app-pay-dialog #packPay [amount]="chosen()?.price ?? 0" [description]="(chosen()?.gb ?? 0) + ' GB extra data, this month'"
-                    title="Add extra data" doneLabel="Data added" [pay]="payForPack" (paid)="afterPack()" />
+    <app-pay-dialog #packPay [amount]="chosen()?.price ?? 0" [description]="'{n} GB extra data, this month' | t: { n: chosen()?.gb ?? 0 }"
+                    [title]="'Add extra data' | t" [doneLabel]="'Data added' | t" [pay]="payForPack" (paid)="afterPack()" />
   `,
 })
 export class Dashboard implements OnInit {
@@ -171,7 +172,7 @@ export class Dashboard implements OnInit {
     this.moving.set(true);
   }
   saveMove() {
-    if (!this.newDate) { this.moveError.set('Pick a date'); return; }
+    if (!this.newDate) { this.moveError.set(t('Pick a date')); return; }
     this.busy.set(true);
     this.moveError.set('');
     this.api.rescheduleInstall(this.newDate).subscribe({
@@ -179,7 +180,7 @@ export class Dashboard implements OnInit {
         this.me.update(m => m && { ...m, install_date: r.install_date, install_reschedules: 3 - r.changes_left });
         this.moving.set(false);
         this.busy.set(false);
-        this.moveNotice.set('Visit moved. We’ve sent you a confirmation.');
+        this.moveNotice.set(t('Visit moved. We’ve sent you a confirmation.'));
       },
       error: e => { this.moveError.set(errorText(e)); this.busy.set(false); },
     });
@@ -203,14 +204,14 @@ export class Dashboard implements OnInit {
   payForPack = (card: CardDetails) => this.api.buyDataPack(this.chosen()!.gb, card);
   afterPack() {
     this.showPacks.set(false);
-    this.packNotice.set(`${this.chosen()!.gb} GB added. It lasts until the end of the month.`);
+    this.packNotice.set(t('{n} GB added. It lasts until the end of the month.', { n: this.chosen()!.gb }));
     this.api.usage().subscribe({ next: u => this.usage.set(u) });
   }
 
   ngOnInit() {
     forkJoin({ me: this.api.me(), usage: this.api.usage(), bill: this.api.billing() }).subscribe({
       next: r => { this.me.set(r.me); this.usage.set(r.usage); this.bill.set(r.bill); },
-      error: e => this.loadError.set(errorText(e, 'Can’t load your account. Refresh to try again.')),
+      error: e => this.loadError.set(errorText(e, t('Can’t load your account. Refresh to try again.'))),
     });
   }
 }

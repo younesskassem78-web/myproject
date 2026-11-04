@@ -1,4 +1,5 @@
 import { DatePipe, DecimalPipe } from '@angular/common';
+import { TPipe, t } from '../core/i18n';
 import { Component, OnInit, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
@@ -14,13 +15,13 @@ export const CATEGORY_LABEL: Record<TicketCategory, string> = {
 
 @Component({
   selector: 'app-support',
-  imports: [FormsModule, DatePipe, DecimalPipe, RouterLink],
+  imports: [TPipe, FormsModule, DatePipe, DecimalPipe, RouterLink],
   template: `
-    <h1>Support</h1>
+    <h1>{{ 'Support' | t }}</h1>
     <div class="support-grid">
       <form class="card ticket-form" (ngSubmit)="send()">
-        <h2>Report a problem</h2>
-        <label>What's it about?
+        <h2>{{ 'Report a problem' | t }}</h2>
+        <label>{{ "What's it about?" | t }}
           <select name="category" [(ngModel)]="category">
             @for (c of categories; track c) { <option [value]="c">{{ categoryLabel(c) }}</option> }
           </select>
@@ -28,43 +29,42 @@ export const CATEGORY_LABEL: Record<TicketCategory, string> = {
 
         @if (category === 'connection') {
           <div class="troubleshoot">
-            <p><strong>Before you send it, try these. They fix most problems:</strong></p>
+            <p><strong>{{ 'Before you send it, try these. They fix most problems:' | t }}</strong></p>
             <ol>
               <li>
                 @if (outages().length) {
-                  <span class="warn-text">There's a known issue in your area: {{ outages()[0].title }}.</span>
-                  We're on it, so you don't need to report it.
+                  <span class="warn-text">{{ "There's a known issue in your area: {title}." | t: { title: outages()[0].title } }}</span>
+                  {{ "We're on it, so you don't need to report it." | t }}
                 } @else {
-                  No known issues in your area right now.
+                  {{ 'No known issues in your area right now.' | t }}
                 }
               </li>
-              <li>Unplug your router, wait 30 seconds, plug it back in, then wait 2 minutes.</li>
-              <li><a routerLink="/speed-test">Run a speed test</a> so we can see what you're getting.</li>
+              <li>{{ 'Unplug your router, wait 30 seconds, plug it back in, then wait 2 minutes.' | t }}</li>
+              <li><a routerLink="/speed-test">{{ 'Run a speed test' | t }}</a> {{ "so we can see what you're getting." | t }}</li>
             </ol>
             @if (latestTest(); as t) {
               <label class="check">
                 <input type="checkbox" name="attach" [(ngModel)]="attachTest" />
-                <span>Attach my latest speed test ({{ t.download_mbps | number: '1.0-1' }} Mbps down,
-                  {{ t.created_at | date: 'd MMM HH:mm' }})</span>
+                <span>{{ 'Attach my latest speed test ({speed} Mbps down, {date})' | t: { speed: (t.download_mbps | number: '1.0-1'), date: (t.created_at | date: 'd MMM HH:mm') } }}</span>
               </label>
             }
           </div>
         }
 
-        <label>Short summary
-          <input name="subject" maxlength="100" placeholder="My internet is slow in the evening" [(ngModel)]="subject" />
+        <label>{{ 'Short summary' | t }}
+          <input name="subject" maxlength="100" [placeholder]="'My internet is slow in the evening' | t" [(ngModel)]="subject" />
         </label>
-        <label>Details
-          <textarea name="message" rows="5" maxlength="1000" placeholder="When did it start? Which devices? Anything you've tried?"
+        <label>{{ 'Details' | t }}
+          <textarea name="message" rows="5" maxlength="1000" [placeholder]="'When did it start? Which devices? Anything you’ve tried?' | t"
                     [(ngModel)]="message"></textarea>
         </label>
         <p class="counter muted">{{ message.length }}/1000</p>
         @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
-        <button class="btn" type="submit" [disabled]="!canSend()">{{ pending() ? 'Sending…' : 'Send ticket' }}</button>
+        <button class="btn" type="submit" [disabled]="!canSend()">{{ (pending() ? 'Sending…' : 'Send ticket') | t }}</button>
       </form>
 
       <section>
-        <h2>Your tickets</h2>
+        <h2>{{ 'Your tickets' | t }}</h2>
         @for (t of tickets(); track t.id) {
           <a class="ticket" [routerLink]="['/support', t.id]">
             <div class="ticket-head">
@@ -72,7 +72,7 @@ export const CATEGORY_LABEL: Record<TicketCategory, string> = {
               <span class="status status-{{ t.status }}">{{ statusLabel(t.status) }}</span>
             </div>
             <p class="clamp">{{ t.message }}</p>
-            <p class="muted">{{ categoryLabel(t.category) }}, updated {{ t.updated_at | date: 'd MMM y, HH:mm' }}</p>
+            <p class="muted">{{ '{category}, updated {date}' | t: { category: categoryLabel(t.category), date: (t.updated_at | date: 'd MMM y, HH:mm') } }}</p>
           </a>
         } @empty {
           <p class="muted">{{ loaded() ? "No tickets yet. If something isn't working, tell us here." : 'Loading…' }}</p>
@@ -98,8 +98,8 @@ export class Support implements OnInit {
   pending = signal(false);
   error = signal('');
 
-  statusLabel = (s: TicketStatus) => STATUS_LABEL[s];
-  categoryLabel = (c: TicketCategory) => CATEGORY_LABEL[c];
+  statusLabel = (s: TicketStatus) => t(STATUS_LABEL[s]);
+  categoryLabel = (c: TicketCategory) => t(CATEGORY_LABEL[c]);
   canSend = () => !!this.subject.trim() && !!this.message.trim() && !this.pending();
 
   ngOnInit() {
@@ -115,7 +115,7 @@ export class Support implements OnInit {
           this.subject = 'My internet is slower than my plan';
         }
       },
-      error: e => this.error.set(errorText(e, 'Can’t load your tickets. Refresh to try again.')),
+      error: e => this.error.set(errorText(e, t('Can’t load your tickets. Refresh to try again.'))),
     });
   }
 
@@ -134,7 +134,7 @@ export class Support implements OnInit {
         this.router.navigate(['/support', t.id]);
       },
       error: e => {
-        this.error.set(errorText(e, 'Your ticket wasn’t sent. Try again.'));
+        this.error.set(errorText(e, t('Your ticket wasn’t sent. Try again.')));
         this.pending.set(false);
       },
     });

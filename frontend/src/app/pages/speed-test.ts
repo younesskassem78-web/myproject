@@ -1,4 +1,5 @@
 import { DatePipe, DecimalPipe } from '@angular/common';
+import { TPipe, t } from '../core/i18n';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { API, ApiService } from '../core/api.service';
@@ -95,12 +96,12 @@ async function uploadJob(target: Target, add: (n: number) => void, signal: Abort
 
 @Component({
   selector: 'app-speed-test',
-  imports: [DatePipe, DecimalPipe, RouterLink],
+  imports: [TPipe, DatePipe, DecimalPipe, RouterLink],
   template: `
-    <h1>Speed test</h1>
-    <p class="muted lead">Measures your real connection (this device’s Wi-Fi or cable, plus your internet line) against the nearest
+    <h1>{{ 'Speed test' | t }}</h1>
+    <p class="muted lead">{{ 'Measures your real connection (this device’s Wi-Fi or cable, plus your internet line) against the nearest
       Cloudflare speed-test server. It takes about 20 seconds and can use 50 to 300 MB on fast lines.
-      For the most accurate result, close other downloads and stand near your router.</p>
+      For the most accurate result, close other downloads and stand near your router.' | t }}</p>
 
     <section class="card speed">
       <div class="gauge" [class.running]="running()">
@@ -109,42 +110,42 @@ async function uploadJob(target: Target, add: (n: number) => void, signal: Abort
           <path class="gauge-fill" d="M20 110 A80 80 0 0 1 180 110" [attr.stroke-dasharray]="arc() + ' 252'" />
         </svg>
         <p class="gauge-value" aria-live="polite">
-          <strong>{{ live() | number: '1.0-1' }}</strong> Mbps<br />
+          <strong>{{ live() | number: '1.0-1' }}</strong> {{ 'Mbps' | t }}<br />
           <span class="muted">{{ phaseLabel() }}</span>
         </p>
       </div>
 
       <dl class="speed-results">
-        <div><dt>Ping</dt><dd>{{ ping() !== null ? (ping() | number: '1.0-0') + ' ms' : '–' }}</dd></div>
-        <div><dt>Download</dt><dd>{{ down() !== null ? (down() | number: '1.0-1') + ' Mbps' : '–' }}</dd></div>
-        <div><dt>Upload</dt><dd>{{ up() !== null ? (up() | number: '1.0-1') + ' Mbps' : '–' }}</dd></div>
+        <div><dt>{{ 'Ping' | t }}</dt><dd>{{ ping() !== null ? (ping() | number: '1.0-0') + ' ms' : '–' }}</dd></div>
+        <div><dt>{{ 'Download' | t }}</dt><dd>{{ down() !== null ? (down() | number: '1.0-1') + ' Mbps' : '–' }}</dd></div>
+        <div><dt>{{ 'Upload' | t }}</dt><dd>{{ up() !== null ? (up() | number: '1.0-1') + ' Mbps' : '–' }}</dd></div>
       </dl>
-      @if (server()) { <p class="muted center-text">Server: {{ server() }}</p> }
+      @if (server()) { <p class="muted center-text">{{ 'Server: {name}' | t: { name: (server() | t) } }}</p> }
 
       @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
       @if (phase() === 'done' && verdict(); as v) { <p class="verdict" [class.bad]="v.bad">{{ v.text }}</p> }
 
       <div class="row-actions center">
         <button class="btn" type="button" (click)="run()" [disabled]="running()">
-          {{ running() ? 'Testing…' : phase() === 'done' ? 'Test again' : 'Start test' }}
+          {{ (running() ? 'Testing…' : phase() === 'done' ? 'Test again' : 'Start test') | t }}
         </button>
         @if (phase() === 'done' && verdict()?.bad && saved()) {
-          <a class="btn btn-ghost" [routerLink]="['/support']" [queryParams]="{ speed: saved()!.id }">Report slow speed</a>
+          <a class="btn btn-ghost" [routerLink]="['/support']" [queryParams]="{ speed: saved()!.id }">{{ 'Report slow speed' | t }}</a>
         }
       </div>
     </section>
 
     <section class="card">
-      <h2>Past results</h2>
-      @if (planSpeed()) { <p class="muted">Your plan: up to {{ planSpeed() }} Mbps.</p> }
-      <div class="table-wrap flat" tabindex="0" role="region" aria-label="Scrollable table">
+      <h2>{{ 'Past results' | t }}</h2>
+      @if (planSpeed()) { <p class="muted">{{ 'Your plan: up to {n} Mbps.' | t: { n: planSpeed() } }}</p> }
+      <div class="table-wrap flat" tabindex="0" role="region" [attr.aria-label]="'Scrollable table' | t">
         <table>
-          <thead><tr><th>When</th><th>Download</th><th>Upload</th><th>Ping</th></tr></thead>
+          <thead><tr><th>{{ 'When' | t }}</th><th>{{ 'Download' | t }}</th><th>{{ 'Upload' | t }}</th><th>{{ 'Ping' | t }}</th></tr></thead>
           <tbody>
             @for (r of history(); track r.id) {
-              <tr><td>{{ r.created_at | date: 'd MMM, HH:mm' }}@if (r.server) {<br /><span class="muted">{{ r.server }}</span>}</td><td>{{ r.download_mbps | number: '1.0-1' }} Mbps</td>
+              <tr><td>{{ r.created_at | date: 'd MMM, HH:mm' }}@if (r.server) {<br /><span class="muted">{{ r.server | t }}</span>}</td><td>{{ r.download_mbps | number: '1.0-1' }} Mbps</td>
                 <td>{{ r.upload_mbps | number: '1.0-1' }} Mbps</td><td>{{ r.ping_ms | number: '1.0-0' }} ms</td></tr>
-            } @empty { <tr><td colspan="4" class="muted">{{ loaded() ? 'No tests yet. Run one above.' : 'Loading…' }}</td></tr> }
+            } @empty { <tr><td colspan="4" class="muted">{{ (loaded() ? 'No tests yet. Run one above.' : 'Loading…') | t }}</td></tr> }
           </tbody>
         </table>
       </div>
@@ -169,7 +170,7 @@ export class SpeedTest implements OnInit {
   running = computed(() => ['ping', 'download', 'upload'].includes(this.phase()));
   // Gauge scale grows with the plan so a 1 Gbps line doesn't sit pinned at the end.
   arc = computed(() => Math.min(1, this.live() / Math.max(100, (this.planSpeed() ?? 100) * 1.2)) * 252);
-  phaseLabel = computed(() => ({ idle: 'Ready', ping: 'Checking response time…', download: 'Download', upload: 'Upload',
+  phaseLabel = computed(() => t({ idle: 'Ready', ping: 'Checking response time…', download: 'Download', upload: 'Upload',
     done: 'Download' }[this.phase()]));
   verdict = computed(() => {
     const d = this.down(), plan = this.planSpeed();
@@ -266,12 +267,12 @@ export class SpeedTest implements OnInit {
         server: this.server(),
       }).subscribe({
         next: r => { this.saved.set(r); this.loadHistory(); },
-        error: e => this.error.set(errorText(e, 'The test finished but we couldn’t save it.')),
+        error: e => this.error.set(errorText(e, t('The test finished but we couldn’t save it.'))),
       });
     } catch {
       this.phase.set('idle');
       this.live.set(0);
-      this.error.set('The test stopped. Check your connection and try again.');
+      this.error.set(t('The test stopped. Check your connection and try again.'));
     }
   }
 }

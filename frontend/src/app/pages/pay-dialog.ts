@@ -1,4 +1,5 @@
 import { CurrencyPipe } from '@angular/common';
+import { TPipe, t } from '../core/i18n';
 import { Component, ElementRef, input, output, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Observable, of, switchMap, timer } from 'rxjs';
@@ -21,7 +22,7 @@ function luhnOk(n: string) {
 /** Fake card checkout in a modal. Nothing is charged; `pay` decides what "paying" does. */
 @Component({
   selector: 'app-pay-dialog',
-  imports: [FormsModule, CurrencyPipe],
+  imports: [TPipe, FormsModule, CurrencyPipe],
   template: `
     <dialog #dlg class="pay" aria-labelledby="pay-title" (cancel)="onCancel($event)" (close)="reset()">
       <form (ngSubmit)="submit()" novalidate>
@@ -30,7 +31,7 @@ function luhnOk(n: string) {
             <h2 id="pay-title">{{ title() || "Pay " + (amount() | currency) }}</h2>
             @if (description()) { <p class="muted">{{ description() }}</p> }
           </div>
-          <button type="button" class="pay-close" aria-label="Close" (click)="close()" [disabled]="state() !== 'idle'">✕</button>
+          <button type="button" class="pay-close" [attr.aria-label]="'Close' | t" (click)="close()" [disabled]="state() !== 'idle'">✕</button>
         </div>
 
         <div class="card-preview" aria-hidden="true">
@@ -43,24 +44,24 @@ function luhnOk(n: string) {
         @if (state() === 'done') {
           <p class="pay-done" role="status">{{ doneLabel() }}</p>
         } @else {
-          <label>Name on card <input name="holder" autocomplete="cc-name" [(ngModel)]="card.holder" /></label>
-          <label>Card number
+          <label>{{ 'Name on card' | t }} <input name="holder" autocomplete="cc-name" [(ngModel)]="card.holder" /></label>
+          <label>{{ 'Card number' | t }}
             <input name="number" inputmode="numeric" autocomplete="cc-number" maxlength="23" placeholder="1234 5678 9012 3456"
                    [ngModel]="card.number" (ngModelChange)="card.number = groupCard($event)" />
           </label>
           <div class="two">
-            <label>Expiry
-              <input name="expiry" inputmode="numeric" autocomplete="cc-exp" maxlength="5" placeholder="MM/YY"
+            <label>{{ 'Expiry' | t }}
+              <input name="expiry" inputmode="numeric" autocomplete="cc-exp" maxlength="5" [placeholder]="'MM/YY' | t"
                      [ngModel]="card.expiry" (ngModelChange)="card.expiry = slashExpiry($event)" />
             </label>
-            <label>CVC <input name="cvc" inputmode="numeric" autocomplete="cc-csc" maxlength="4" placeholder="123" [(ngModel)]="card.cvc" /></label>
+            <label>{{ 'CVC' | t }} <input name="cvc" inputmode="numeric" autocomplete="cc-csc" maxlength="4" placeholder="123" [(ngModel)]="card.cvc" /></label>
           </div>
           @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
           <button class="btn pay-btn" type="submit" [disabled]="state() !== 'idle'">
             {{ state() === 'processing' ? 'Processing…' : (submitLabel() || 'Pay ' + (amount() | currency)) }}
           </button>
-          <p class="hint">Demo checkout, nothing is charged. Test card 4242 4242 4242 4242, any future date.
-            4000 0000 0000 0002 is declined.</p>
+          <p class="hint">{{ 'Demo checkout, nothing is charged. Test card 4242 4242 4242 4242, any future date.
+            4000 0000 0000 0002 is declined.' | t }}</p>
         }
       </form>
     </dialog>
@@ -119,15 +120,15 @@ export class PayDialog {
   }
 
   private problem(c: CardDetails): string {
-    if (!c.holder.trim()) return 'Enter the name on the card';
-    if (!/^\d{13,19}$/.test(c.number) || !luhnOk(c.number)) return 'Check the card number';
+    if (!c.holder.trim()) return t('Enter the name on the card');
+    if (!/^\d{13,19}$/.test(c.number) || !luhnOk(c.number)) return t('Check the card number');
     const m = /^(0[1-9]|1[0-2])\/(\d{2})$/.exec(c.expiry);
-    if (!m) return 'Enter the expiry as MM/YY';
+    if (!m) return t('Enter the expiry as MM/YY');
     const now = new Date();
     if (2000 + +m[2] < now.getFullYear() || (2000 + +m[2] === now.getFullYear() && +m[1] < now.getMonth() + 1)) {
-      return 'This card has expired';
+      return t('This card has expired');
     }
-    if (!/^\d{3,4}$/.test(c.cvc)) return 'Enter the 3 or 4 digit CVC';
+    if (!/^\d{3,4}$/.test(c.cvc)) return t('Enter the 3 or 4 digit CVC');
     return '';
   }
 
@@ -147,7 +148,7 @@ export class PayDialog {
       },
       error: e => {
         this.state.set('idle');
-        this.error.set(errorText(e, 'The payment didn’t go through. Try again.'));
+        this.error.set(errorText(e, t('The payment didn’t go through. Try again.')));
       },
     });
   }

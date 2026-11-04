@@ -1,4 +1,5 @@
 import { DatePipe, DecimalPipe } from '@angular/common';
+import { TPipe, t } from '../core/i18n';
 import { Component, OnInit, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -11,22 +12,22 @@ import { CATEGORY_LABEL, STATUS_LABEL } from './support';
 /** One ticket's conversation. Used by customers (/support/:id) and staff (/admin/tickets/:id). */
 @Component({
   selector: 'app-ticket',
-  imports: [DatePipe, DecimalPipe, FormsModule, RouterLink],
+  imports: [TPipe, DatePipe, DecimalPipe, FormsModule, RouterLink],
   template: `
-    <a class="back" [routerLink]="staff() ? '/admin/tickets' : '/support'">Back to tickets</a>
+    <a class="back" [routerLink]="staff() ? '/admin/tickets' : '/support'">{{ 'Back to tickets' | t }}</a>
     @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
     @if (t(); as t) {
       <div class="ticket-page">
         <header class="ticket-title">
           <div>
             <h1>{{ t.subject }}</h1>
-            <p class="muted">{{ category(t) }}, opened {{ t.created_at | date: 'd MMM y, HH:mm' }}
-              @if (staff()) { by {{ t.user_name }} ({{ t.user_email }}) }</p>
+            <p class="muted">{{ '{category}, opened {date}' | t: { category: category(t), date: (t.created_at | date: 'd MMM y, HH:mm') } }}
+              @if (staff()) { {{ 'by {name} ({email})' | t: { name: t.user_name, email: t.user_email } }} }</p>
           </div>
           @if (staff()) {
-            <label class="inline-label">Status
+            <label class="inline-label">{{ 'Status' | t }}
               <select [ngModel]="t.status" (ngModelChange)="setStatus($event)">
-                <option value="open">Open</option><option value="in_progress">In progress</option><option value="resolved">Resolved</option>
+                <option value="open">{{ 'Open' | t }}</option><option value="in_progress">{{ 'In progress' | t }}</option><option value="resolved">{{ 'Resolved' | t }}</option>
               </select>
             </label>
           } @else {
@@ -35,8 +36,7 @@ import { CATEGORY_LABEL, STATUS_LABEL } from './support';
         </header>
 
         @if (t.speed_test; as s) {
-          <p class="attached">Speed test attached: {{ s.download_mbps | number: '1.0-1' }} Mbps down,
-            {{ s.upload_mbps | number: '1.0-1' }} Mbps up, {{ s.ping_ms | number: '1.0-0' }} ms ping
+          <p class="attached">{{ 'Speed test attached: {down} Mbps down, {up} Mbps up, {ping} ms ping' | t: { down: (s.download_mbps | number: '1.0-1'), up: (s.upload_mbps | number: '1.0-1'), ping: (s.ping_ms | number: '1.0-0') } }}
             ({{ s.created_at | date: 'd MMM HH:mm' }})</p>
         }
 
@@ -59,11 +59,11 @@ import { CATEGORY_LABEL, STATUS_LABEL } from './support';
             <textarea name="reply" rows="4" maxlength="2000" [(ngModel)]="reply"></textarea>
           </label>
           @if (sendError()) { <p class="error" role="alert">{{ sendError() }}</p> }
-          <button class="btn" type="submit" [disabled]="!reply.trim() || pending()">{{ pending() ? 'Sending…' : 'Send reply' }}</button>
+          <button class="btn" type="submit" [disabled]="!reply.trim() || pending()">{{ (pending() ? 'Sending…' : 'Send reply') | t }}</button>
         </form>
       </div>
     } @else if (!error()) {
-      <div class="skeleton" aria-busy="true" aria-label="Loading"></div>
+      <div class="skeleton" aria-busy="true" [attr.aria-label]="'Loading' | t"></div>
     }
   `,
 })
@@ -77,14 +77,14 @@ export class TicketPage implements OnInit {
   pending = signal(false);
   reply = '';
 
-  statusLabel = (s: TicketStatus) => STATUS_LABEL[s];
-  category = (t: TicketDetail) => CATEGORY_LABEL[t.category];
+  statusLabel = (s: TicketStatus) => t(STATUS_LABEL[s]);
+  category = (d: TicketDetail) => t(CATEGORY_LABEL[d.category]);
 
   ngOnInit() { this.load(); }
 
   load() {
     const req = this.staff() ? this.api.adminTicket(this.id()) : this.api.ticket(this.id());
-    req.subscribe({ next: t => this.t.set(t), error: e => this.error.set(errorText(e, 'We couldn’t find this ticket.')) });
+    req.subscribe({ next: t => this.t.set(t), error: e => this.error.set(errorText(e, t('We couldn’t find this ticket.'))) });
   }
 
   send() {
@@ -95,7 +95,7 @@ export class TicketPage implements OnInit {
     const req: Observable<unknown> = this.staff() ? this.api.staffReply(this.id(), body) : this.api.replyTicket(this.id(), body);
     req.subscribe({
       next: () => { this.reply = ''; this.pending.set(false); this.load(); },
-      error: e => { this.sendError.set(errorText(e, 'Your reply wasn’t sent. Try again.')); this.pending.set(false); },
+      error: e => { this.sendError.set(errorText(e, t('Your reply wasn’t sent. Try again.'))); this.pending.set(false); },
     });
   }
 
