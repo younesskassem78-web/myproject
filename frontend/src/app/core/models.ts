@@ -1,4 +1,4 @@
-export type Role = 'customer' | 'admin';
+export type Role = 'customer' | 'admin' | 'billing' | 'support'; // admin = the owner
 export interface Plan { id: string; name: string; data_gb: number; speed_mbps: number; price: number; active: boolean; }
 
 export type OutageStatus = 'investigating' | 'identified' | 'monitoring' | 'resolved';
@@ -82,9 +82,9 @@ export interface AdminInvoice extends Invoice { user_email: string; user_name: s
 export interface AuditEntry { id: string; admin_email: string; action: string; target: string; created_at: string; }
 export interface AdminOverview {
   kpis: {
-    active_customers: number; mrr: number; unpaid_total: number; overdue_invoices: number;
+    active_customers: number; mrr?: number; unpaid_total?: number; overdue_invoices?: number; // money: owner and billing only
     open_tickets: number; pending_applications: number; active_outages: number;
   };
-  revenue: { month: string; amount: number }[];
-  audit: AuditEntry[];
+  revenue: { month: string; amount: number }[] | null;
+  audit: AuditEntry[] | null;
 }

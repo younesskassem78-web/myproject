@@ -55,7 +55,25 @@ def admin_user(user: User) -> dict:
     return user
 
 
-Admin = Annotated[dict, Depends(admin_user)]
+Admin = Annotated[dict, Depends(admin_user)]  # the owner ("admin" role): everything, including staff and plans
+
+STAFF_ROLES = ("admin", "billing", "support")
+
+
+def staff_only(*roles: str):
+    """A dependency that lets in the owner plus the given staff roles; everyone else gets 403."""
+    allowed = {"admin", *roles}
+
+    def check(user: User) -> dict:
+        if user["role"] not in allowed:
+            raise HTTPException(403, "Your staff role doesn't include this")
+        return user
+    return Annotated[dict, Depends(check)]
+
+
+Staff = staff_only("billing", "support")  # any staff member
+BillingStaff = staff_only("billing")  # money: applications, bills, reports, customer balances
+SupportStaff = staff_only("support")  # service: tickets and outages
 
 
 def daily_usage(email: str, today: date) -> list[dict]:

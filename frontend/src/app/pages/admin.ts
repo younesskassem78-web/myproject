@@ -3,7 +3,9 @@ import { Component, OnInit, computed, inject, input, signal } from '@angular/cor
 import { FormsModule } from '@angular/forms';
 import { Observable, finalize, forkJoin } from 'rxjs';
 import { ApiService } from '../core/api.service';
+import { AuthService } from '../core/auth.service';
 import { errorText } from '../core/errors';
+import { ROLE_LABEL } from '../core/permissions';
 import { saveFile } from '../core/download';
 import { AdminPlan, AdminUser, Application, InstallStatus, Role } from '../core/models';
 
@@ -80,6 +82,7 @@ const PAGE = 50;
       }
 
       @case ('users') {
+        @if (owner()) {
         <details class="card add-form">
           <summary>Add a user</summary>
           <form class="inline-form" (ngSubmit)="createUser()">
@@ -87,7 +90,9 @@ const PAGE = 50;
             <label>Email <input name="email" type="email" [(ngModel)]="newUser.email" /></label>
             <label>Password <input name="password" type="password" autocomplete="new-password" [(ngModel)]="newUser.password" /></label>
             <label>Role
-              <select name="role" [(ngModel)]="newUser.role"><option value="customer">Customer</option><option value="admin">Admin</option></select>
+              <select name="role" [(ngModel)]="newUser.role">
+                @for (r of roles; track r) { <option [value]="r">{{ roleLabel[r] }}</option> }
+              </select>
             </label>
             <label>Plan
               <select name="plan" [(ngModel)]="newUser.plan_id">
@@ -100,6 +105,10 @@ const PAGE = 50;
             <button class="btn btn-sm" type="submit">Add user</button>
           </form>
         </details>
+        } @else {
+          <p class="muted">{{ auth.role() === 'support' ? 'You can look up customers. Changes are made by billing staff or the owner.'
+            : 'You can change customers’ plan, installation and balance. Staff accounts, roles, passwords and access are managed by the owner.' }}</p>
+        }
 
         <div class="table-wrap" tabindex="0" role="region" aria-label="Scrollable table">
           <table>
@@ -110,33 +119,37 @@ const PAGE = 50;
                   <td><strong>{{ u.name }}</strong><br /><span class="muted">{{ u.email }}</span>
                     @if (u.phone || u.city) { <br /><span class="muted">{{ u.phone }} {{ u.city }}</span> }</td>
                   <td>
-                    <select [attr.aria-label]="'Role for ' + u.email" [ngModel]="u.role" (ngModelChange)="setRole(u, $event)" [disabled]="u.id === myId()">
-                      <option value="customer">Customer</option><option value="admin">Admin</option>
-                    </select>
+                    @if (owner() && u.id !== myId()) {
+                      <select [attr.aria-label]="'Role for ' + u.email" [ngModel]="u.role" (ngModelChange)="setRole(u, $event)">
+                        @for (r of roles; track r) { <option [value]="r">{{ roleLabel[r] }}</option> }
+                      </select>
+                    } @else { {{ roleLabel[u.role] }} }
                   </td>
                   <td>
-                    <select [attr.aria-label]="'Plan for ' + u.email" [ngModel]="u.plan_id ?? ''" (ngModelChange)="setPlan(u, $event)">
+                    <select [attr.aria-label]="'Plan for ' + u.email" [ngModel]="u.plan_id ?? ''" (ngModelChange)="setPlan(u, $event)" [disabled]="!canEdit(u)">
                       @if (!u.plan_id) { <option value="">No plan</option> }
                       @for (p of plans(); track p.id) { <option [value]="p.id">{{ p.name }}</option> }
                     </select>
                   </td>
                   <td>
                     @if (u.role === 'customer') {
-                      <select [attr.aria-label]="'Installation for ' + u.email" [ngModel]="u.install_status ?? ''" (ngModelChange)="setInstall(u, $event)">
+                      <select [attr.aria-label]="'Installation for ' + u.email" [ngModel]="u.install_status ?? ''" (ngModelChange)="setInstall(u, $event)" [disabled]="!canEdit(u)">
                         @if (!u.install_status) { <option value="">Not booked</option> }
                         <option value="scheduled">Booked</option><option value="technician_assigned">Technician assigned</option><option value="installed">Installed</option>
                       </select>
                     }
                   </td>
-                  <td><input class="num" inputmode="decimal" [attr.aria-label]="'Balance for ' + u.email" [(ngModel)]="u.balance" (change)="saveBalance(u)" /></td>
+                  <td><input class="num" inputmode="decimal" [attr.aria-label]="'Balance for ' + u.email" [(ngModel)]="u.balance" (change)="saveBalance(u)" [disabled]="!canEdit(u)" /></td>
                   <td [class.overdue-text]="u.amount_due > 0">{{ u.amount_due ? (u.amount_due | currency) : '–' }}</td>
                   <td>{{ u.active ? 'Active' : 'Deactivated' }}</td>
                   <td class="actions">
-                    @if (u.id !== myId()) {
-                      <button class="btn btn-sm btn-ghost" type="button" (click)="toggleActive(u)">{{ u.active ? 'Deactivate' : 'Activate' }}</button>
+                    @if (owner()) {
+                      @if (u.id !== myId()) {
+                        <button class="btn btn-sm btn-ghost" type="button" (click)="toggleActive(u)">{{ u.active ? 'Deactivate' : 'Activate' }}</button>
+                      }
+                      <button class="btn btn-sm btn-ghost" type="button" (click)="resetPassword(u)">Reset password</button>
+                      @if (u.id !== myId()) { <button class="btn btn-sm btn-danger" type="button" (click)="deleteUser(u)">Delete</button> }
                     }
-                    <button class="btn btn-sm btn-ghost" type="button" (click)="resetPassword(u)">Reset password</button>
-                    @if (u.id !== myId()) { <button class="btn btn-sm btn-danger" type="button" (click)="deleteUser(u)">Delete</button> }
                   </td>
                 </tr>
               } @empty { <tr><td colspan="8" class="muted">{{ loaded() ? 'No users match your search.' : 'Loading…' }}</td></tr> }
@@ -213,6 +226,12 @@ export class Admin implements OnInit {
     return !q || fields.some(f => f?.toLowerCase().includes(q));
   }
   filteredApps = () => this.applications().filter(a => this.matches(a.name, a.email, a.phone));
+  auth = inject(AuthService);
+  readonly roles: Role[] = ['customer', 'admin', 'billing', 'support'];
+  readonly roleLabel = ROLE_LABEL;
+  owner = () => this.auth.isOwner();
+  /** Billing staff may change customers (not staff); support staff only look. The server checks the same. */
+  canEdit = (u: AdminUser) => this.owner() || (this.auth.role() === 'billing' && u.role === 'customer');
   usersTotal = signal(0);
   private shown = PAGE; // how many customers are on screen ("Show more" adds a page)
   private searchTimer?: ReturnType<typeof setTimeout>;
@@ -294,7 +313,7 @@ export class Admin implements OnInit {
     this.run(this.api.createUser({ ...u, plan_id: u.plan_id || null, city: u.city.trim() || null, balance }),
       `Added ${u.email}.`, () => (this.newUser = blankUser()));
   }
-  setRole(u: AdminUser, role: Role) { this.run(this.api.updateUser(u.id, { role }), `${u.email} is now ${role === 'admin' ? 'an admin' : 'a customer'}.`); }
+  setRole(u: AdminUser, role: Role) { this.run(this.api.updateUser(u.id, { role }), `${u.email} is now: ${ROLE_LABEL[role]}.`); }
   setPlan(u: AdminUser, planId: string) { if (planId) this.run(this.api.updateUser(u.id, { plan_id: planId }), `Changed ${u.email}'s plan.`); }
   setInstall(u: AdminUser, status: InstallStatus) {
     if (status) this.run(this.api.updateUser(u.id, { install_status: status }), `Updated ${u.email}'s installation. They've been notified.`);

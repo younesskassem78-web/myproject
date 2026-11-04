@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from app import events
-from app.deps import DB, Admin, Text
+from app.deps import DB, SupportStaff, Text
 from app.routers.customer import OUTAGE_COLS
 
 router = APIRouter()
@@ -43,13 +43,13 @@ def _tell_city(conn, outage: dict, title: str) -> None:
 
 
 @router.get("/api/admin/outages")
-def list_outages(_: Admin, conn: DB):
+def list_outages(_: SupportStaff, conn: DB):
     return conn.execute(f"select {OUTAGE_COLS} from outages order by (status = 'resolved'), started_at desc "
                         "limit 100").fetchall()
 
 
 @router.post("/api/admin/outages", status_code=201)
-def open_outage(body: NewOutage, admin: Admin, conn: DB):
+def open_outage(body: NewOutage, admin: SupportStaff, conn: DB):
     with conn.transaction():
         o = conn.execute(f"insert into outages (city, title, message, status) values (%s, %s, %s, %s) "
                          f"returning {OUTAGE_COLS}", (body.city, body.title, body.message, body.status)).fetchone()
@@ -59,7 +59,7 @@ def open_outage(body: NewOutage, admin: Admin, conn: DB):
 
 
 @router.patch("/api/admin/outages/{outage_id}")
-def update_outage(outage_id: UUID, body: OutageChange, admin: Admin, conn: DB):
+def update_outage(outage_id: UUID, body: OutageChange, admin: SupportStaff, conn: DB):
     ch = body.model_dump(exclude_none=True)
     with conn.transaction():
         o = conn.execute(

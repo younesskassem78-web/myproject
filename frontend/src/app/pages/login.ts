@@ -46,7 +46,7 @@ export class Login {
     this.pending.set(true);
     this.error.set('');
     this.auth.login(this.email.trim(), this.password).subscribe({
-      next: role => this.router.navigateByUrl(role === 'admin' ? '/admin' : '/dashboard'),
+      next: role => this.router.navigateByUrl(role === 'customer' ? '/dashboard' : '/admin'),
       error: e => {
         this.pending.set(false);
         this.error.set(errorText(e));

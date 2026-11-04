@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException, Response
 from pydantic import BaseModel, model_validator
 
 from app import events
-from app.deps import DB, Admin, Card, Limit, Offset, User, charge_card, paged
+from app.deps import DB, BillingStaff, Card, Limit, Offset, User, charge_card, paged
 
 router = APIRouter()
 
@@ -124,7 +124,7 @@ def issue_invoice(conn, user_id: UUID, period: date, plan_name: str, amount: flo
 
 
 @router.post("/api/admin/billing/run")
-def run_billing(admin: Admin, conn: DB):
+def run_billing(admin: BillingStaff, conn: DB):
     return issue_month(conn, admin["email"])
 
 
@@ -186,7 +186,7 @@ STATUS_FILTER = {  # "overdue" isn't stored: it's an unpaid bill past its due da
 
 
 @router.get("/api/admin/invoices")
-def all_invoices(_: Admin, conn: DB, response: Response, q: str = "",
+def all_invoices(_: BillingStaff, conn: DB, response: Response, q: str = "",
                  status: Literal["", "unpaid", "overdue", "paid", "void"] = "", limit: Limit = 500, offset: Offset = 0):
     """All bills; `q` searches customer name, email and bill number."""
     like = f"%{q.strip()}%"
@@ -197,7 +197,7 @@ def all_invoices(_: Admin, conn: DB, response: Response, q: str = "",
 
 
 @router.get("/api/admin/automation")
-def automation(_: Admin, conn: DB):
+def automation(_: BillingStaff, conn: DB):
     """What the background jobs are doing: last automatic billing run and the email queue."""
     from app import outbox, scheduler
     run = conn.execute("select last_run_at, last_result from job_runs where name = 'daily_billing'").fetchone()
@@ -207,7 +207,7 @@ def automation(_: Admin, conn: DB):
 
 
 @router.post("/api/admin/email-queue/retry")
-def retry_failed_emails(admin: Admin, conn: DB):
+def retry_failed_emails(admin: BillingStaff, conn: DB):
     n = conn.execute("update email_outbox set status = 'pending', attempts = 0, next_attempt_at = now() "
                      "where status = 'failed'").rowcount
     events.audit(conn, admin, "retried failed emails", str(n))

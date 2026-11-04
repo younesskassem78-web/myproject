@@ -72,7 +72,7 @@ describe('D4: admin number boxes never save a blank as 0', () => {
 describe('D6: customers who open an admin address', () => {
   function run(loggedIn: boolean, admin: boolean) {
     TestBed.configureTestingModule({
-      providers: [provideRouter([]), { provide: AuthService, useValue: { isLoggedIn: () => loggedIn, isAdmin: () => admin } }],
+      providers: [provideRouter([]), { provide: AuthService, useValue: { isLoggedIn: () => loggedIn, isStaff: () => admin, role: () => (admin ? 'admin' : 'customer') } }],
     });
     const r = TestBed.runInInjectionContext(() => adminGuard({} as any, {} as any));
     return r === true ? true : TestBed.inject(Router).serializeUrl(r as UrlTree);
@@ -81,6 +81,24 @@ describe('D6: customers who open an admin address', () => {
   it('go to their overview', () => expect(run(true, false)).toBe('/dashboard'));
   it('signed-out visitors go to sign in', () => expect(run(false, false)).toBe('/login'));
   it('admins get in', () => expect(run(true, true)).toBe(true));
+});
+
+describe('staff roles in the console', () => {
+  function open(role: string, area: string) {
+    TestBed.configureTestingModule({
+      providers: [provideRouter([]), { provide: AuthService, useValue: { isLoggedIn: () => true, isStaff: () => role !== 'customer', role: () => role } }],
+    });
+    const r = TestBed.runInInjectionContext(() => adminGuard({ data: { area } } as any, {} as any));
+    return r === true ? true : TestBed.inject(Router).serializeUrl(r as UrlTree);
+  }
+
+  it('support staff are sent back from billing pages', () => expect(open('support', 'billing')).toBe('/admin'));
+  it('support staff open tickets', () => expect(open('support', 'tickets')).toBe(true));
+  it('billing staff open billing but not plans', () => {
+    expect(open('billing', 'billing')).toBe(true);
+    TestBed.resetTestingModule();
+    expect(open('billing', 'plans')).toBe('/admin');
+  });
 });
 
 describe('D10: a customer on a plan that is no longer sold', () => {

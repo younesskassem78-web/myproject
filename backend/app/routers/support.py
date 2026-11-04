@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException, Response
 from pydantic import BaseModel
 
 from app import events
-from app.deps import DB, Admin, Limit, Offset, Text, User, paged
+from app.deps import DB, Limit, Offset, SupportStaff, Text, User, paged
 
 router = APIRouter()
 
@@ -88,7 +88,7 @@ class StatusChange(BaseModel):
 
 
 @router.get("/api/admin/tickets")
-def list_all_tickets(_: Admin, conn: DB, response: Response, limit: Limit = 500, offset: Offset = 0):
+def list_all_tickets(_: SupportStaff, conn: DB, response: Response, limit: Limit = 500, offset: Offset = 0):
     return paged(conn, response, f"select {TICKET_COLS}, u.email as user_email, u.name as user_name, "
                         "(select count(*)::int from ticket_messages m where m.ticket_id = t.id) as replies "
                         "from tickets t join users u on u.id = t.user_id "
@@ -96,12 +96,12 @@ def list_all_tickets(_: Admin, conn: DB, response: Response, limit: Limit = 500,
 
 
 @router.get("/api/admin/tickets/{ticket_id}")
-def admin_ticket(ticket_id: UUID, _: Admin, conn: DB):
+def admin_ticket(ticket_id: UUID, _: SupportStaff, conn: DB):
     return ticket_detail(conn, ticket_id)
 
 
 @router.post("/api/admin/tickets/{ticket_id}/messages", status_code=201)
-def staff_reply(ticket_id: UUID, body: NewMessage, admin: Admin, conn: DB):
+def staff_reply(ticket_id: UUID, body: NewMessage, admin: SupportStaff, conn: DB):
     t = ticket_detail(conn, ticket_id)
     with conn.transaction():
         msg = conn.execute("insert into ticket_messages (ticket_id, author_name, from_staff, body) "
@@ -117,7 +117,7 @@ def staff_reply(ticket_id: UUID, body: NewMessage, admin: Admin, conn: DB):
 
 
 @router.patch("/api/admin/tickets/{ticket_id}")
-def update_ticket(ticket_id: UUID, body: StatusChange, admin: Admin, conn: DB):
+def update_ticket(ticket_id: UUID, body: StatusChange, admin: SupportStaff, conn: DB):
     with conn.transaction():
         old = conn.execute("select status, subject, user_id from tickets where id = %s for update",
                            (ticket_id,)).fetchone()

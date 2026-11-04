@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 import { map, tap } from 'rxjs';
 import { ApiService } from './api.service';
 import { Role } from './models';
+import { STAFF_ROLES } from './permissions';
 
 const TOKEN = 'myterra_token';
 const NAME = 'myterra_name';
@@ -17,7 +18,9 @@ export class AuthService {
 
   token() { return localStorage.getItem(TOKEN); }
   isLoggedIn() { return !!this.token(); }
-  isAdmin() { return this.isLoggedIn() && this.role() === 'admin'; }
+  /** Any staff member (owner, billing or support). */
+  isStaff() { return this.isLoggedIn() && STAFF_ROLES.includes(this.role()!); }
+  isOwner() { return this.isLoggedIn() && this.role() === 'admin'; }
 
   /** Signs in and returns the user's role. */
   login(email: string, password: string) {

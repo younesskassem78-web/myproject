@@ -3,11 +3,12 @@ import { Meta } from '@angular/platform-browser';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs';
 import { AuthService } from './core/auth.service';
+import { StaffArea, canSee } from './core/permissions';
 import { ThemeService } from './core/theme.service';
 import { Icon } from './shared/icon';
 import { NotificationBell } from './shared/notification-bell';
 
-interface NavItem { path: string; label: string; icon: string; exact?: boolean; }
+interface NavItem { path: string; label: string; icon: string; exact?: boolean; area?: StaffArea; }
 
 const CUSTOMER_NAV: NavItem[] = [
   { path: '/dashboard', label: 'Overview', icon: 'home' },
@@ -20,15 +21,15 @@ const CUSTOMER_NAV: NavItem[] = [
 const PUBLIC_PAGE = /^\/(login|apply|status)(\?|$)/;
 
 const ADMIN_NAV: NavItem[] = [
-  { path: '/admin', label: 'Overview', icon: 'home', exact: true },
-  { path: '/admin/applications', label: 'Applications', icon: 'inbox' },
-  { path: '/admin/customers', label: 'Customers', icon: 'users' },
-  { path: '/admin/plans', label: 'Plans', icon: 'layers' },
-  { path: '/admin/billing', label: 'Billing', icon: 'bill' },
-  { path: '/admin/outages', label: 'Outages', icon: 'alert' },
-  { path: '/admin/tickets', label: 'Tickets', icon: 'help' },
-  { path: '/admin/reports', label: 'Reports', icon: 'chart' },
-  { path: '/admin/audit', label: 'Audit log', icon: 'list' },
+  { path: '/admin', label: 'Overview', icon: 'home', exact: true, area: 'overview' },
+  { path: '/admin/applications', label: 'Applications', icon: 'inbox', area: 'applications' },
+  { path: '/admin/customers', label: 'Customers', icon: 'users', area: 'customers' },
+  { path: '/admin/plans', label: 'Plans', icon: 'layers', area: 'plans' },
+  { path: '/admin/billing', label: 'Billing', icon: 'bill', area: 'billing' },
+  { path: '/admin/outages', label: 'Outages', icon: 'alert', area: 'outages' },
+  { path: '/admin/tickets', label: 'Tickets', icon: 'help', area: 'tickets' },
+  { path: '/admin/reports', label: 'Reports', icon: 'chart', area: 'reports' },
+  { path: '/admin/audit', label: 'Audit log', icon: 'list', area: 'audit' },
 ];
 
 @Component({
@@ -107,7 +108,7 @@ export class App {
     });
   }
 
-  nav() { return this.auth.role() === 'admin' ? ADMIN_NAV : CUSTOMER_NAV; }
+  nav() { return this.auth.isStaff() ? ADMIN_NAV.filter(i => canSee(this.auth.role(), i.area!)) : CUSTOMER_NAV; }
   firstName() { return (this.auth.name() ?? '').split(' ')[0]; }
 
   // Public pages (sign in, apply, password reset, status) use their own full-page layout.

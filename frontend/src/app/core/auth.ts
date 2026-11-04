@@ -3,6 +3,7 @@ import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
 import { catchError, throwError } from 'rxjs';
 import { AuthService } from './auth.service';
+import { StaffArea, canSee } from './permissions';
 
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const auth = inject(AuthService);
@@ -20,15 +21,17 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
 export const authGuard: CanActivateFn = () =>
   inject(AuthService).isLoggedIn() || inject(Router).parseUrl('/login');
 
-// UI only: the backend checks the admin role on every admin request.
-export const adminGuard: CanActivateFn = () => {
+// UI only: the backend checks the staff role on every admin request.
+export const adminGuard: CanActivateFn = route => {
   const auth = inject(AuthService);
-  if (auth.isAdmin()) return true;
-  return inject(Router).parseUrl(auth.isLoggedIn() ? '/dashboard' : '/login');
+  const router = inject(Router);
+  if (!auth.isStaff()) return router.parseUrl(auth.isLoggedIn() ? '/dashboard' : '/login');
+  const area = route.data?.['area'] as StaffArea | undefined;
+  return !area || canSee(auth.role(), area) || router.parseUrl('/admin'); // a page outside their role: back to overview
 };
 
 export const customerGuard: CanActivateFn = () => {
   const auth = inject(AuthService);
   if (!auth.isLoggedIn()) return inject(Router).parseUrl('/login');
-  return !auth.isAdmin() || inject(Router).parseUrl('/admin');
+  return !auth.isStaff() || inject(Router).parseUrl('/admin');
 };

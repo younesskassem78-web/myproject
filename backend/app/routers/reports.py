@@ -6,7 +6,7 @@ from typing import Literal
 
 from fastapi import APIRouter, HTTPException, Response
 
-from app.deps import DB, Admin
+from app.deps import DB, BillingStaff
 
 router = APIRouter()
 
@@ -23,7 +23,7 @@ def _range(start: date | None, end: date | None) -> tuple[date, date]:
 
 
 @router.get("/api/admin/reports/revenue")
-def revenue(_: Admin, conn: DB, start: date | None = None, end: date | None = None):
+def revenue(_: BillingStaff, conn: DB, start: date | None = None, end: date | None = None):
     """Money in (payments), bills issued, and new customers between two dates, inclusive."""
     start, end = _range(start, end)
     span = (start, end + timedelta(days=1))
@@ -62,7 +62,7 @@ def _cell(value) -> str:
 
 
 @router.get("/api/admin/export/{kind}.csv")
-def export(kind: Literal["customers", "invoices", "payments"], _: Admin, conn: DB,
+def export(kind: Literal["customers", "invoices", "payments"], _: BillingStaff, conn: DB,
            start: date | None = None, end: date | None = None):
     query, dated = EXPORTS[kind]
     params = ()

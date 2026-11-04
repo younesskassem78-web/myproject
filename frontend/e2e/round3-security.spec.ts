@@ -143,3 +143,22 @@ test('concurrent duplicate requests do not create duplicates', async () => {
   expect(statuses[0]).toBe(201);
   expect([400, 409]).toContain(statuses[1]);
 });
+
+test('staff roles: support staff see only their part of the console', async ({ page }) => {
+  const owner = await apiAs(await apiLogin(ADMIN));
+  const email = `support${Date.now()}@example.com`;
+  expect((await owner.post('admin/users', { data: { email, name: 'Sam Support', password: 'support12345', role: 'support' } })).status()).toBe(201);
+  const support = await apiLogin({ email, password: 'support12345' });
+  expect(support.role).toBe('support');
+  await useSession(page, support);
+  await page.goto('/admin');
+  const menu = page.getByRole('complementary', { name: 'Main' });
+  await expect(menu.getByRole('link', { name: 'Tickets' })).toBeVisible();
+  await expect(menu.getByRole('link', { name: 'Billing' })).toHaveCount(0);
+  await expect(menu.getByRole('link', { name: 'Reports' })).toHaveCount(0);
+  await expect(page.getByText('Monthly recurring revenue')).toHaveCount(0);
+  await page.goto('/admin/billing');
+  await expect(page).toHaveURL(/\/admin$/);  // sent back to the overview
+  // and the server refuses even if the page were opened another way
+  expect((await (await apiAs(support)).get('admin/invoices')).status()).toBe(403);
+});

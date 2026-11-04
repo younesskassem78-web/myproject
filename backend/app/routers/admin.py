@@ -8,7 +8,7 @@ from psycopg import errors
 from pydantic import BaseModel, Field
 
 from app import db, events
-from app.deps import (APP_URL, DB, PLAN_COLS, USER_COLS, Admin, Email, Limit, Money, Offset, Password, Text, paged,
+from app.deps import (APP_URL, DB, PLAN_COLS, USER_COLS, Admin, BillingStaff, Email, Staff, Limit, Money, Offset, Password, Text, paged,
                       send_email_quietly, update_row)
 from app.routers.billing import issue_invoice
 
@@ -26,7 +26,7 @@ class NewUser(BaseModel):
     name: Text(100)
     email: Email
     password: Password
-    role: Literal["customer", "admin"] = "customer"
+    role: Literal["customer", "admin", "billing", "support"] = "customer"
     plan_id: UUID | None = None
     balance: Money = 0
     city: Text(60) | None = None
@@ -36,7 +36,7 @@ class UserChanges(BaseModel):
     name: Text(100) | None = None
     email: Email | None = None
     password: Password | None = None
-    role: Literal["customer", "admin"] | None = None
+    role: Literal["customer", "admin", "billing", "support"] | None = None
     plan_id: UUID | None = None
     balance: Money | None = None
     active: bool | None = None
@@ -64,7 +64,7 @@ class PlanChanges(BaseModel):
 # ---------- overview ----------
 
 @router.get("/api/admin/overview")
-def overview(_: Admin, conn: DB):
+def overview(user: Staff, conn: DB):
     kpis = conn.execute(
         "select (select count(*)::int from users where role = 'customer' and active) as active_customers, "
         "(select coalesce(sum(p.price), 0)::float8 from users u join plans p on p.id = u.plan_id "
@@ -79,8 +79,12 @@ def overview(_: Admin, conn: DB):
         "from generate_series(date_trunc('month', now()) - interval '5 months', date_trunc('month', now()), "
         "interval '1 month') m left join payments p on date_trunc('month', p.created_at) = m "
         "group by m order by m").fetchall()
+    if user["role"] == "support":  # money figures are for the owner and billing staff
+        return {"kpis": {k: v for k, v in kpis.items() if k not in ("mrr", "unpaid_total", "overdue_invoices")},
+                "revenue": None, "audit": None}
     return {"kpis": kpis, "revenue": revenue,
-            "audit": conn.execute("select * from audit_log order by created_at desc limit 8").fetchall()}
+            "audit": conn.execute("select * from audit_log order by created_at desc limit 8").fetchall()
+            if user["role"] == "admin" else None}
 
 
 @router.get("/api/admin/audit")
@@ -91,7 +95,7 @@ def audit_log(_: Admin, conn: DB, response: Response, limit: Limit = 200, offset
 # ---------- applications ----------
 
 @router.get("/api/admin/applications")
-def list_applications(_: Admin, conn: DB, response: Response, limit: Limit = 500, offset: Offset = 0):
+def list_applications(_: BillingStaff, conn: DB, response: Response, limit: Limit = 500, offset: Offset = 0):
     return paged(conn, response, "select a.id, a.name, a.email, a.phone, a.birth_date, a.id_number, a.city, a.street, "
                         "a.apartment, a.install_date, a.card_brand, a.card_last4, a.amount_paid::float8 as amount_paid, "
                         "a.status, a.created_at, p.name as plan_name "
@@ -99,7 +103,7 @@ def list_applications(_: Admin, conn: DB, response: Response, limit: Limit = 500
 
 
 @router.post("/api/admin/applications/{app_id}/approve")
-def approve(app_id: UUID, admin: Admin, conn: DB):
+def approve(app_id: UUID, admin: BillingStaff, conn: DB):
     with conn.transaction():
         a = conn.execute("select a.*, p.name as plan_name from applications a join plans p on p.id = a.plan_id "
                          "where a.id = %s and a.status = 'pending' for update of a", (app_id,)).fetchone()
@@ -134,7 +138,7 @@ def approve(app_id: UUID, admin: Admin, conn: DB):
 
 
 @router.post("/api/admin/applications/{app_id}/reject")
-def reject(app_id: UUID, admin: Admin, conn: DB):
+def reject(app_id: UUID, admin: BillingStaff, conn: DB):
     with conn.transaction():
         a = conn.execute("update applications set status = 'rejected' where id = %s and status = 'pending' "
                          "returning name, email, card_brand, card_last4, amount_paid::float8 as amount_paid",
@@ -153,7 +157,7 @@ def reject(app_id: UUID, admin: Admin, conn: DB):
 # ---------- customers ----------
 
 @router.get("/api/admin/users")
-def list_users(_: Admin, conn: DB, response: Response, q: str = "", limit: Limit = 500, offset: Offset = 0):
+def list_users(_: Staff, conn: DB, response: Response, q: str = "", limit: Limit = 500, offset: Offset = 0):
     """Customers and staff; `q` searches name, email, phone and city."""
     like = f"%{q.strip()}%"
     return paged(conn, response, f"select {USER_COLS}, p.name as plan_name, "
@@ -184,10 +188,17 @@ def create_user(body: NewUser, admin: Admin, conn: DB):
 
 
 @router.patch("/api/admin/users/{user_id}")
-def update_user(user_id: UUID, body: UserChanges, admin: Admin, conn: DB):
+def update_user(user_id: UUID, body: UserChanges, admin: BillingStaff, conn: DB):
     changes = body.model_dump(exclude_unset=True, exclude_none=True)
-    if user_id == admin["id"] and (changes.get("active") is False or changes.get("role") == "customer"):
+    if user_id == admin["id"] and (changes.get("active") is False or changes.get("role", admin["role"]) != admin["role"]):
         raise HTTPException(400, "You can't deactivate or demote your own account")
+    if admin["role"] != "admin":
+        # Billing staff look after customers' accounts; roles, passwords, access and staff accounts are the owner's.
+        if set(changes) & {"role", "password", "active", "email"}:
+            raise HTTPException(403, "Only the owner can change roles, passwords, email addresses or access")
+        target = conn.execute("select role from users where id = %s", (user_id,)).fetchone()
+        if target and target["role"] != "customer":
+            raise HTTPException(403, "Only the owner can change staff accounts")
     if "password" in changes:
         changes["password_hash"] = db.hash_password(changes.pop("password"))
     try:
@@ -237,7 +248,7 @@ def delete_user(user_id: UUID, admin: Admin, conn: DB):
 # ---------- plans ----------
 
 @router.get("/api/admin/plans")
-def list_plans(_: Admin, conn: DB):
+def list_plans(_: Staff, conn: DB):
     return conn.execute(f"select {PLAN_COLS}, (select count(*) from users u where u.plan_id = plans.id)::int as users "
                         "from plans order by price").fetchall()
 

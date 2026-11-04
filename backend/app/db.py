@@ -258,6 +258,13 @@ create table if not exists job_runs (
   last_run_at timestamptz,
   last_result text
 );
+-- v7 (staff roles): "admin" is the owner; billing and support staff see only their part of the console
+do $$ begin
+  if (select pg_get_constraintdef(oid) from pg_constraint where conname = 'users_role_check') not like '%support%' then
+    alter table users drop constraint users_role_check;
+    alter table users add constraint users_role_check check (role in ('customer', 'admin', 'billing', 'support'));
+  end if;
+end $$;
 """
 
 
