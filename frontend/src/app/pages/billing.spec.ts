@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { of, throwError } from 'rxjs';
+import { Subject, of, throwError } from 'rxjs';
 import { ApiService } from '../core/api.service';
 import { BillingSummary, Invoice } from '../core/models';
 import { Billing } from './billing';
@@ -24,6 +24,21 @@ describe('Billing', () => {
     await fixture.whenStable();
     return fixture;
   }
+
+  it('says Loading, not "No bills yet", until the bills arrive', async () => {
+    const summary = new Subject<BillingSummary>();
+    api = { billing: vi.fn(() => summary), invoices: vi.fn(() => of([])), payments: vi.fn(() => of([])) };
+    TestBed.configureTestingModule({ imports: [Billing], providers: [provideRouter([]), { provide: ApiService, useValue: api }] });
+    const fixture = TestBed.createComponent(Billing);
+    await fixture.whenStable();
+    expect(fixture.nativeElement.textContent).toContain('Loading…');
+    expect(fixture.nativeElement.textContent).not.toContain('No bills yet');
+    summary.next({ amount_due: 0, next_invoice: null, balance: 0, autopay: false, card_brand: null, card_last4: null } as BillingSummary);
+    summary.complete();
+    await fixture.whenStable();
+    expect(fixture.nativeElement.textContent).toContain('No bills yet');
+    expect(fixture.nativeElement.querySelector('.skeleton')).toBeNull();
+  });
 
   it('shows what is due and the bill list', async () => {
     const text = (await setup()).nativeElement.textContent;

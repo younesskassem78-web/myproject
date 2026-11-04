@@ -38,7 +38,7 @@ import { AdminInvoice, InvoiceStatus } from '../../core/models';
               <td>{{ i.due_date | date: 'd MMM' }}</td>
               <td><span class="status status-{{ i.status }}">{{ label(i.status) }}</span></td>
             </tr>
-          } @empty { <tr><td colspan="6" class="muted">No bills match.</td></tr> }
+          } @empty { <tr><td colspan="6" class="muted">{{ loaded() ? 'No bills match.' : 'Loading…' }}</td></tr> }
         </tbody>
       </table>
     </div>
@@ -48,6 +48,7 @@ import { AdminInvoice, InvoiceStatus } from '../../core/models';
 export class AdminBilling implements OnInit {
   private api = inject(ApiService);
   invoices = signal<AdminInvoice[]>([]);
+  loaded = signal(false); // lists say "Loading…", not "nothing here", until the data arrives
   busy = signal(false);
   notice = signal('');
   error = signal('');
@@ -63,7 +64,7 @@ export class AdminBilling implements OnInit {
 
   ngOnInit() { this.load(); }
 
-  load() { this.api.adminInvoices().subscribe({ next: i => this.invoices.set(i), error: e => this.error.set(errorText(e)) }); }
+  load() { this.api.adminInvoices().subscribe({ next: i => { this.invoices.set(i); this.loaded.set(true); }, error: e => this.error.set(errorText(e)) }); }
 
   run() {
     if (!confirm('Issue this month’s bills now?')) return;

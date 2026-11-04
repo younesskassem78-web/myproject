@@ -1,7 +1,7 @@
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import { Component, OnInit, computed, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Observable, forkJoin } from 'rxjs';
+import { Observable, finalize, forkJoin } from 'rxjs';
 import { ApiService } from '../core/api.service';
 import { errorText } from '../core/errors';
 import { AdminPlan, AdminUser, Application, InstallStatus, Role } from '../core/models';
@@ -62,12 +62,14 @@ const blankPlan = () => ({ name: '', data_gb: null as number | null, speed_mbps:
                   <td><span class="status status-{{ a.status }}">{{ appLabel(a.status) }}</span></td>
                   <td class="actions">
                     @if (a.status === 'pending') {
-                      <button class="btn btn-sm" type="button" (click)="approve(a)">Approve</button>
-                      <button class="btn btn-sm btn-ghost" type="button" (click)="reject(a)">Reject</button>
+                      <button class="btn btn-sm" type="button" (click)="approve(a)" [disabled]="!!working()"
+                              [class.loading]="working() === 'approve:' + a.id">{{ working() === 'approve:' + a.id ? 'Approving…' : 'Approve' }}</button>
+                      <button class="btn btn-sm btn-ghost" type="button" (click)="reject(a)" [disabled]="!!working()"
+                              [class.loading]="working() === 'reject:' + a.id">{{ working() === 'reject:' + a.id ? 'Rejecting…' : 'Reject' }}</button>
                     }
                   </td>
                 </tr>
-              } @empty { <tr><td colspan="6" class="muted">No applications{{ query ? ' match your search' : ' yet' }}.</td></tr> }
+              } @empty { <tr><td colspan="6" class="muted">{{ !loaded() ? 'Loading…' : 'No applications' + (query ? ' match your search' : ' yet') + '.' }}</td></tr> }
             </tbody>
           </table>
         </div>
@@ -133,7 +135,7 @@ const blankPlan = () => ({ name: '', data_gb: null as number | null, speed_mbps:
                     @if (u.id !== myId()) { <button class="btn btn-sm btn-danger" type="button" (click)="deleteUser(u)">Delete</button> }
                   </td>
                 </tr>
-              } @empty { <tr><td colspan="8" class="muted">No users match your search.</td></tr> }
+              } @empty { <tr><td colspan="8" class="muted">{{ loaded() ? 'No users match your search.' : 'Loading…' }}</td></tr> }
             </tbody>
           </table>
         </div>
@@ -181,6 +183,8 @@ export class Admin implements OnInit {
   title = computed(() => TITLES[this.tab()]);
   myId = signal('');
   applications = signal<Application[]>([]);
+  working = signal(''); // "approve:<id>" while that approval (and its ~5 s email) is in progress
+  loaded = signal(false); // lists say "Loading…", not "nothing here", until the data arrives
   users = signal<AdminUser[]>([]);
   plans = signal<AdminPlan[]>([]);
   error = signal('');
@@ -208,7 +212,7 @@ export class Admin implements OnInit {
   load() {
     forkJoin({ applications: this.api.adminApplications(), users: this.api.adminUsers(), plans: this.api.adminPlans() })
       .subscribe({
-        next: r => { this.applications.set(r.applications); this.users.set(r.users); this.plans.set(r.plans); },
+        next: r => { this.applications.set(r.applications); this.users.set(r.users); this.plans.set(r.plans); this.loaded.set(true); },
         error: e => this.error.set(errorText(e)),
       });
   }
@@ -226,18 +230,21 @@ export class Admin implements OnInit {
   approve(a: Application) {
     this.error.set('');
     this.notice.set('');
+    this.working.set('approve:' + a.id);
     this.api.approve(a.id).subscribe({
       next: r => {
+        this.working.set('');
         this.notice.set(r.email_sent ? `Approved ${a.name}. We emailed them a sign-in link.`
           : `Approved ${a.name}, but the email didn't send. Let them know they can sign in.`);
         this.load();
       },
-      error: e => { this.error.set(errorText(e)); this.load(); },
+      error: e => { this.working.set(''); this.error.set(errorText(e)); this.load(); },
     });
   }
   reject(a: Application) {
     if (confirm(`Reject ${a.name}'s application? Their first payment is refunded.`)) {
-      this.run(this.api.reject(a.id), `Rejected ${a.name}'s application.`);
+      this.working.set('reject:' + a.id);
+      this.run(this.api.reject(a.id).pipe(finalize(() => this.working.set(''))), `Rejected ${a.name}'s application.`);
     }
   }
 
@@ -266,7 +273,9 @@ export class Admin implements OnInit {
     if (password) this.run(this.api.updateUser(u.id, { password }), `Changed ${u.email}'s password and signed them out.`);
   }
   deleteUser(u: AdminUser) {
-    if (confirm(`Delete ${u.email}? Their bills and tickets are deleted too. This can't be undone.`)) {
+    if (confirm(`Delete ${u.email}? Their tickets are deleted too. This can't be undone.
+
+Customers with bills or payments can't be deleted; deactivate them instead.`)) {
       this.run(this.api.deleteUser(u.id), `Deleted ${u.email}.`);
     }
   }

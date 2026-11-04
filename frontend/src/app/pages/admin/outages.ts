@@ -48,12 +48,13 @@ import { OUTAGE_LABEL } from '../status';
           </div>
         }
       </article>
-    } @empty { <p class="muted">No outages recorded.</p> }
+    } @empty { <p class="muted">{{ loaded() ? 'No outages recorded.' : 'Loading…' }}</p> }
   `,
 })
 export class AdminOutages implements OnInit {
   private api = inject(ApiService);
   outages = signal<Outage[]>([]);
+  loaded = signal(false); // lists say "Loading…", not "nothing here", until the data arrives
   drafts: Record<string, { status: OutageStatus; message: string }> = {};
   form = { city: '', title: '', message: '' };
   busy = signal(false);
@@ -68,6 +69,7 @@ export class AdminOutages implements OnInit {
       next: list => {
         this.drafts = Object.fromEntries(list.map(o => [o.id, { status: o.status, message: '' }]));
         this.outages.set(list);
+        this.loaded.set(true);
       },
       error: e => this.error.set(errorText(e)),
     });

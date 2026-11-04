@@ -62,7 +62,7 @@ export async function expectNoHorizontalOverflow(page: Page) {
 
 /** WCAG 2.1 A/AA checks; serious and critical problems fail the test. */
 export async function expectAccessible(page: Page) {
-  const result = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze();
+  const result = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze();
   const bad = result.violations.filter(v => v.impact === 'serious' || v.impact === 'critical');
   expect(bad.map(v => `${v.id}: ${v.help} (${v.nodes.map(n => n.target.join(' ')).slice(0, 3).join(', ')})`)).toEqual([]);
 }

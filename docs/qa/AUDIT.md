@@ -107,3 +107,55 @@ Earlier in the same session (before this audit, with tests): notification bell s
 
 ## G. Readiness
 **PASS WITH LIMITATIONS** — no known critical or high defects; every page passed all three rounds. Not verified: Docker images, the CI workflow, and real email/SMS delivery (see "Remaining work").
+
+---
+
+# Audit 2 — 2026-11-04 (after live email, step-by-step sign-up and password reset)
+
+Scope: what changed since audit 1 plus a fresh real-user pass. Backup first: `backups/myterra-before-audit2-20261104-0834.dump` (all 15 tables).
+
+## Incident found during start-up
+The PostgreSQL server had crashed on 2026-11-03 23:56 (Windows exception 0xC0000142, a process failing to start while the PC had ~0.9 GB of 7.8 GB memory free). It recovered automatically on restart; row counts checked, no data lost. Cause is the machine's memory pressure, not the app.
+
+## Defects found and fixed
+| # | Severity | Problem (root cause) | Fix | Verified by |
+|---|---|---|---|---|
+| E1 | High | Every email was sent inside the request; Brevo takes **5.2 s** per email (measured). Opening an outage for a city emailed customers one by one inside the transaction (100 customers ≈ 9 min, far past any timeout); paying a bill waited 5 s for the receipt. | Notification emails go to a 4-worker background sender (`deps.send_email_later`). Codes, password reset, approve and reject still send inline because the person must know if it failed. | `test_outage_request_does_not_wait_for_email` (fails before the fix), `test_failed_background_email_is_logged_not_raised` |
+| E2 | High | No per-address limit on code emails: one visitor could request codes for hundreds of addresses, using up the 300/day free email quota and tying up server threads for 5 s each. | Max 10 code emails per hour per network address (new `verifications.ip` column + index); the reset page shows this limit instead of pretending a code was sent. | `test_one_address_cannot_send_unlimited_code_emails` |
+| E3 | High (data) | Deleting a customer cascaded to their bills and payments (financial records). | Refused with 409 when bills or payments exist; deactivate instead. Customers without billing history can still be deleted. | `test_customer_with_bills_cannot_be_deleted`, `test_delete_customer_without_bills_removes_their_tickets` |
+| E4 | Medium | When the email service failed, the API's 502 "We couldn't send the email" was shown as "Can't reach the MyTerra server" (status checked before the message). | The API's own message wins; connection text only when there is none. | unit `shows the server's own message even on a 502` |
+| E5 | Medium | A missing field showed a bare "Field required" (seen by the user on sign-up payment). | Names the field: "Birth date is missing." | unit `names the missing field` |
+| E6 | Medium | Lists said "No bills yet", "No tickets yet", etc. while still loading; billing, invoice, ticket and settings were blank while loading. | "Loading…" until data arrives; skeleton placeholder on single-item pages (10 pages). | unit `says Loading, not "No bills yet"` |
+| E7 | Medium | Approve/Reject gave no feedback for the ~5 s the approval email takes; double clicks were likely. | "Approving…" with spinner, row buttons locked until done. | unit `shows Approving… and locks the buttons` |
+| E8 | Medium (a11y) | Review step of sign-up: Edit buttons inside a definition list (`<dl>`) broke screen-reader structure. Found by adding WCAG 2.2 checks to every sign-up and reset step. | Edit buttons moved into their own `<dd>`. | Playwright + axe (WCAG 2.2 AA) on every step |
+
+Also done in the days before this audit (each with tests): bare site address showed an empty page; sign-up split into 5 steps with only the email verified and required fields marked; +961 added to Lebanese numbers automatically; existing accounts told at the code step; password reset split into email → code → new password, with the code checked before the password and unknown emails told clearly; email moved from Gmail-only to any SMTP service (Brevo).
+
+## Three rounds
+- **Round 1 (before changes):** backend 138 passed, frontend 84 passed, browser 109 passed.
+- **Round 2 (after fixes):** backend 142 passed; frontend 88 passed; browser: the new WCAG 2.2 per-step checks failed once on E8 → fixed → journeys and security re-run 21/21 passed.
+- **Round 3 (full regression):** frontend 88 passed; browser **109 passed, 0 failed, 0 flaky, 0 skipped** (desktop, tablet, phone, dark mode; WCAG 2.2 AA; journeys with database read-back; access control and hostile input).
+
+## Database
+- New: `verifications.ip` + index `verifications_ip` (additive). Rehearsed on a restored copy of today's backup: run twice, row counts identical, then applied to the real database and verified. Real data unchanged (7 users, 4 applications, 8 bills, 6 payments, 2 tickets).
+
+## Final checks
+| Check | Result |
+|---|---|
+| Backend lint (ruff E, F, W, B) | clean |
+| Backend tests | 142 passed |
+| Frontend unit tests | 88 passed |
+| Production build | success, no warnings, 386 kB initial |
+| npm audit / pip-audit | 0 / 0 known vulnerabilities |
+| Browser tests (3 rounds, WCAG 2.2 AA) | 109 passed |
+
+## Not done / limitations
+| Severity | Item |
+|---|---|
+| Medium | Background email queue is in memory: a restart drops unsent emails, and one can leave before its transaction commits. Upgrade: jobs table + worker. |
+| Medium | Admin screens show the first 500 rows (API pages, screens don't yet). |
+| Low | Session token in `localStorage` (mitigated by strict CSP, no `innerHTML`). |
+| Low | Revealing whether an email has an account (reset and sign-up) is a deliberate usability choice; limited by the per-address code limit. |
+| Not run | Lighthouse and OWASP ZAP (not installed; the machine is short on memory), Docker images, CI on GitHub, real SMS (no Twilio). |
+
+**Readiness: PASS WITH LIMITATIONS** — no known critical or high defects remain.

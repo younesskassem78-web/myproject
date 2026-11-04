@@ -159,12 +159,12 @@ export const STEPS: { id: Step; label: string }[] = [
                   <legend>Review and pay</legend>
                   <dl class="review">
                     <div><dt>Plan</dt><dd>{{ plan()?.name }}, {{ plan()?.price | currency: 'USD' : 'symbol' : '1.0-2' }}/month</dd>
-                      <button type="button" class="link-btn" (click)="go('plan')">Edit</button></div>
+                      <dd class="review-edit"><button type="button" class="link-btn" (click)="go('plan')">Edit</button></dd></div>
                     <div><dt>You</dt><dd>{{ form.name }}<br />{{ form.email }} <span class="verified">Verified</span><br />{{ phone() }}</dd>
-                      <button type="button" class="link-btn" (click)="go('details')">Edit</button></div>
+                      <dd class="review-edit"><button type="button" class="link-btn" (click)="go('details')">Edit</button></dd></div>
                     <div><dt>Installation</dt>
                       <dd>{{ form.street }}{{ form.apartment ? ', ' + form.apartment : '' }}, {{ form.city }}<br />on {{ form.install_date }}</dd>
-                      <button type="button" class="link-btn" (click)="go('home')">Edit</button></div>
+                      <dd class="review-edit"><button type="button" class="link-btn" (click)="go('home')">Edit</button></dd></div>
                   </dl>
                   <p class="hint">You pay the first month now by card. Nothing is charged in this demo.</p>
                   <label class="check">

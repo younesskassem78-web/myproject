@@ -62,6 +62,8 @@ import { CATEGORY_LABEL, STATUS_LABEL } from './support';
           <button class="btn" type="submit" [disabled]="!reply.trim() || pending()">{{ pending() ? 'Sending…' : 'Send reply' }}</button>
         </form>
       </div>
+    } @else if (!error()) {
+      <div class="skeleton" aria-busy="true" aria-label="Loading"></div>
     }
   `,
 })

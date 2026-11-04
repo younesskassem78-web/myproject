@@ -13,9 +13,16 @@ from fastapi.testclient import TestClient  # noqa: E402
 from app.main import app  # noqa: E402
 
 
+class SendNow:
+    """Tests send queued emails on the spot, so they can check them straight after the request."""
+    def submit(self, fn, *args):
+        fn(*args)
+
+
 @pytest.fixture(autouse=True)
 def _reset(monkeypatch):
-    from app import notify
+    from app import deps, notify
+    monkeypatch.setattr(deps, "MAILER", SendNow())
     for key in ("SMTP_HOST", "SMTP_USER", "SMTP_PASSWORD", "EMAIL_FROM", "TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_FROM"):
         monkeypatch.delenv(key, raising=False)  # tests never send real email or SMS
     notify.OUTBOX.clear()

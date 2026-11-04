@@ -13,8 +13,7 @@ from psycopg import errors
 from pydantic import BaseModel, StringConstraints, field_validator, model_validator
 
 from app import db, notify
-from app.deps import (DB, DECLINED_TEST_CARD, PLAN_COLS, Card, Email, Password, Phone, Text, log,
-                      send_email_quietly)
+from app.deps import DB, DECLINED_TEST_CARD, PLAN_COLS, Card, Email, Password, Phone, Text, log, send_email_later
 
 router = APIRouter()
 
@@ -114,7 +113,7 @@ IP_LOCK_AFTER = 30  # wrong passwords from one network address within 15 minutes
 @router.post("/api/login")
 def login(body: Login, conn: DB, request: Request):
     email = body.email.strip().lower()
-    ip = request.client.host if request.client else None
+    ip = _client_ip(request)
     fails = conn.execute("select count(*) filter (where email = %s)::int as by_email, "
                          "count(*) filter (where ip = %s)::int as by_ip from login_failures "
                          "where created_at > now() - interval '15 minutes'", (email, ip)).fetchone()
@@ -152,15 +151,27 @@ def logout(conn: DB, authorization: str | None = Header(None)):
     return Response(status_code=204)
 
 
-def _issue_code(conn, channel: str, target: str, send) -> str:
+CODES_PER_IP_PER_HOUR = 10  # each code is a real email or SMS, and the free email plan allows 300 a day
+TOO_MANY_CODES = "Too many codes requested from your network. Try again in an hour."
+
+
+def _client_ip(request: Request) -> str | None:
+    return request.client.host if request.client else None
+
+
+def _issue_code(conn, channel: str, target: str, send, ip: str | None = None) -> str:
     """Create a 6-digit code for `target`, deliver it with `send(text)` and return it."""
+    if ip and conn.execute("select count(*) n from verifications where ip = %s and created_at > now() - interval '1 hour'",
+                           (ip,)).fetchone()["n"] >= CODES_PER_IP_PER_HOUR:
+        raise HTTPException(429, TOO_MANY_CODES)
     if conn.execute("select 1 from verifications where channel = %s and target = %s and verified_at is null "
                     "and created_at > now() - interval '60 seconds'", (channel, target)).fetchone():
         raise HTTPException(429, "Wait a minute before asking for another code")
     conn.execute("delete from verifications where expires_at < now() - interval '1 day'")
     code = f"{secrets.randbelow(10**6):06d}"
-    vid = conn.execute("insert into verifications (channel, target, code_hash, expires_at) "
-                       "values (%s, %s, '', now() + interval '10 minutes') returning id", (channel, target)).fetchone()["id"]
+    vid = conn.execute("insert into verifications (channel, target, code_hash, expires_at, ip) "
+                       "values (%s, %s, '', now() + interval '10 minutes', %s) returning id",
+                       (channel, target, ip)).fetchone()["id"]
     conn.execute("update verifications set code_hash = %s where id = %s", (_code_hash(vid, code), vid))
     try:
         send(f"Your MyTerra code is {code}. It expires in 10 minutes.")
@@ -192,16 +203,16 @@ def _check_code(conn, channel: str, target: str, code: str, mark: bool = True) -
 
 
 @router.post("/api/verify/send")
-def verify_send(body: VerifySend, conn: DB):
+def verify_send(body: VerifySend, conn: DB, request: Request):
     if body.channel == "email":
         # Sign-up only: tell people with an account now, not after they've filled in everything and paid.
         if conn.execute("select 1 from users where email = %s", (body.target,)).fetchone():
             raise HTTPException(409, "An account with this email already exists. Sign in, or reset your password.")
         code = _issue_code(conn, "email", body.target,
-                           lambda text: notify.send_email(body.target, "Your MyTerra verification code", text))
+                           lambda text: notify.send_email(body.target, "Your MyTerra verification code", text), _client_ip(request))
         live = notify.email_is_live()
     else:
-        code = _issue_code(conn, "sms", body.target, lambda text: notify.send_sms(body.target, text))
+        code = _issue_code(conn, "sms", body.target, lambda text: notify.send_sms(body.target, text), _client_ip(request))
         live = notify.sms_is_live()
     # Demo mode only: with no email/SMS service connected nobody could receive the code, so show it on screen.
     # Never in production, and never for password-reset codes (those would let anyone take over an account).
@@ -233,16 +244,16 @@ def _reset_target(email: str) -> str:
 
 
 @router.post("/api/password/forgot")
-def forgot(body: Forgot, conn: DB):
+def forgot(body: Forgot, conn: DB, request: Request):
     # Product choice: say plainly when no account matches (like most ISPs), at the cost of revealing who is a customer.
     if not conn.execute("select 1 from users where email = %s and active", (body.email,)).fetchone():
         raise HTTPException(404, "No active MyTerra account uses this email. Check the spelling, or apply for an account.")
     try:
         _issue_code(conn, "email", _reset_target(body.email),
-                    lambda text: notify.send_email(body.email, "Reset your MyTerra password", text))
+                    lambda text: notify.send_email(body.email, "Reset your MyTerra password", text), _client_ip(request))
     except HTTPException as e:
-        if e.status_code != 429:  # a code was sent less than a minute ago: the one already sent still works
-            raise
+        if e.status_code != 429 or e.detail == TOO_MANY_CODES:
+            raise  # (a plain 429 means a code went out less than a minute ago: that one still works)
     return {"sent": True}
 
 
@@ -300,8 +311,8 @@ def apply(body: Apply, conn: DB):
                  body.card.number[-4:], plan["price"])).fetchone()
         except errors.UniqueViolation:
             raise HTTPException(409, "You already applied with this email. Wait for approval.") from None
-    send_email_quietly(body.email, "We received your MyTerra application",
-                  f"Hi {body.name},\n\nThanks for applying for {plan['name']}. We charged ${plan['price']:.2f} "
+    send_email_later(body.email, "We received your MyTerra application",
+                     f"Hi {body.name},\n\nThanks for applying for {plan['name']}. We charged ${plan['price']:.2f} "
                   f"to your {body.card.brand()} ending in {body.card.number[-4:]} for the first month.\n\n"
                   "We'll email you as soon as your application is reviewed.\n\nMyTerra")
     return row

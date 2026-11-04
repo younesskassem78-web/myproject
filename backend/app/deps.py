@@ -3,6 +3,7 @@ import logging
 import re
 import os
 import random
+from concurrent.futures import ThreadPoolExecutor
 from datetime import date
 from typing import Annotated
 from uuid import UUID
@@ -63,6 +64,16 @@ def update_row(conn, table: str, row_id: UUID, changes: dict, cols: str) -> dict
     sets = sql.SQL(", ").join(sql.SQL("{} = %s").format(sql.Identifier(k)) for k in changes)
     query = sql.SQL("update {} set {} where id = %s returning " + cols).format(sql.Identifier(table), sets)
     return conn.execute(query, (*changes.values(), row_id)).fetchone()
+
+
+# shortcut: queued emails live in memory, so a restart loses unsent ones and one may go out before its
+# transaction commits; a jobs table with a worker fixes both if volume grows.
+MAILER = ThreadPoolExecutor(max_workers=4, thread_name_prefix="mail")
+
+
+def send_email_later(to: str, subject: str, body: str) -> None:
+    """Email nobody needs to wait for (receipts, bills, outages): one SMTP send takes ~5 s with Brevo."""
+    MAILER.submit(send_email_quietly, to, subject, body)
 
 
 def send_email_quietly(to: str, subject: str, body: str) -> bool:

@@ -56,11 +56,23 @@ def test_reset_password(client, admin):
     assert client.post("/api/login", json={"email": "demo@myterra.app", "password": "newpass123"}).status_code == 200
 
 
-def test_delete_user_removes_tickets(client, admin, auth_headers):
+def test_customer_with_bills_cannot_be_deleted(client, admin):
     demo = _user(client, admin, "demo@myterra.app")
-    assert client.delete(f"/api/admin/users/{demo['id']}", headers=admin).status_code == 204
-    assert client.post("/api/login", json={"email": "demo@myterra.app", "password": "demo1234"}).status_code == 401
-    assert client.get("/api/admin/tickets", headers=admin).json() == []
+    r = client.delete(f"/api/admin/users/{demo['id']}", headers=admin)
+    assert r.status_code == 409 and "Deactivate" in r.json()["detail"]
+    bills = client.get("/api/admin/invoices", headers=admin).json()
+    assert any(b["user_email"] == "demo@myterra.app" for b in bills)  # bills are still there
+
+
+def test_delete_customer_without_bills_removes_their_tickets(client, admin, auth_headers):
+    plan = client.get("/api/plans").json()[0]["id"]
+    new = client.post("/api/admin/users", headers=admin, json={
+        "email": "oops@x.com", "name": "Added By Mistake", "password": "oops12345", "role": "customer", "plan_id": plan}).json()
+    h = auth_headers(client, "oops@x.com", "oops12345")
+    client.post("/api/tickets", headers=h, json={"subject": "Hi", "message": "Test", "category": "other"})
+    assert client.delete(f"/api/admin/users/{new['id']}", headers=admin).status_code == 204
+    assert client.post("/api/login", json={"email": "oops@x.com", "password": "oops12345"}).status_code == 401
+    assert all(t["user_email"] != "oops@x.com" for t in client.get("/api/admin/tickets", headers=admin).json())
 
 
 def test_admin_cannot_delete_or_deactivate_self(client, admin):

@@ -21,7 +21,7 @@ import { AuditEntry } from '../../core/models';
         <tbody>
           @for (a of filtered(); track a.id) {
             <tr><td>{{ a.created_at | date: 'd MMM y, HH:mm' }}</td><td>{{ a.admin_email }}</td><td>{{ a.action }}</td><td>{{ a.target }}</td></tr>
-          } @empty { <tr><td colspan="4" class="muted">Nothing logged yet.</td></tr> }
+          } @empty { <tr><td colspan="4" class="muted">{{ loaded() ? 'Nothing logged yet.' : 'Loading…' }}</td></tr> }
         </tbody>
       </table>
     </div>
@@ -30,6 +30,7 @@ import { AuditEntry } from '../../core/models';
 export class AdminAudit implements OnInit {
   private api = inject(ApiService);
   entries = signal<AuditEntry[]>([]);
+  loaded = signal(false); // lists say "Loading…", not "nothing here", until the data arrives
   error = signal('');
   query = '';
 
@@ -38,5 +39,5 @@ export class AdminAudit implements OnInit {
     return this.entries().filter(a => !q || [a.admin_email, a.action, a.target].some(f => f.toLowerCase().includes(q)));
   };
 
-  ngOnInit() { this.api.adminAudit().subscribe({ next: a => this.entries.set(a), error: e => this.error.set(errorText(e)) }); }
+  ngOnInit() { this.api.adminAudit().subscribe({ next: a => { this.entries.set(a); this.loaded.set(true); }, error: e => this.error.set(errorText(e)) }); }
 }

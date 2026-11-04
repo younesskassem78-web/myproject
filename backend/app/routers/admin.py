@@ -219,6 +219,10 @@ def delete_user(user_id: UUID, admin: Admin, conn: DB):
     if user_id == admin["id"]:
         raise HTTPException(400, "You can't delete your own account")
     with conn.transaction():
+        # Bills and payments are financial records: never delete them along with the customer.
+        if conn.execute("select 1 from invoices where user_id = %s union all select 1 from payments where user_id = %s limit 1",
+                        (user_id, user_id)).fetchone():
+            raise HTTPException(409, "This customer has bills or payments, which must be kept. Deactivate the account instead.")
         gone = conn.execute("delete from users where id = %s returning email", (user_id,)).fetchone()
         if not gone:
             raise HTTPException(404, "User not found")

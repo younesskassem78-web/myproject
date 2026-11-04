@@ -199,6 +199,9 @@ do $$ begin
       foreign key (speed_test_id) references speed_tests(id) on delete set null;
   end if;
 end $$;
+-- v4 (audit 2): codes remember the requesting address, so one visitor can't send hundreds of emails
+alter table verifications add column if not exists ip text;
+create index if not exists verifications_ip on verifications (ip, created_at);
 """
 
 

@@ -21,6 +21,8 @@ import { ThemeService } from '../core/theme.service';
             <div><dt>Address</dt><dd>{{ m.address || 'Not set' }}</dd></div>
           </dl>
           <p class="hint">Moving or changed number? Open a support ticket and we'll update it.</p>
+        } @else {
+          <p class="muted" aria-busy="true">Loading…</p>
         }
       </section>
 

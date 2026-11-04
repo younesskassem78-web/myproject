@@ -215,3 +215,14 @@ def test_phone_format_is_checked_without_a_code(client, plan_id):
 def test_existing_account_is_told_at_the_email_code_step(client):
     r = client.post("/api/verify/send", json={"channel": "email", "target": "demo@myterra.app"})
     assert r.status_code == 409 and "already exists" in r.json()["detail"]
+
+
+def test_one_address_cannot_send_unlimited_code_emails(client):
+    for i in range(10):
+        assert client.post("/api/verify/send", json={"channel": "email", "target": f"p{i}@x.com"}).status_code == 200
+    r = client.post("/api/verify/send", json={"channel": "email", "target": "p10@x.com"})
+    assert r.status_code == 429 and "your network" in r.json()["detail"]
+    # password reset codes count too, and the reset page says so instead of pretending a code was sent
+    r = client.post("/api/password/forgot", json={"email": "demo@myterra.app"})
+    assert r.status_code == 429 and "your network" in r.json()["detail"]
+    assert len(notify.OUTBOX) == 10

@@ -3,7 +3,7 @@
  * (and after a page reload) to prove it reached the database, not just the page's memory.
  */
 import { Page, expect, test } from '@playwright/test';
-import { ADMIN, CARD, DEMO, SARA, apiAs, apiLogin, signInUI, unique, useSession } from './helpers';
+import { ADMIN, CARD, DEMO, SARA, apiAs, apiLogin, expectAccessible, signInUI, unique, useSession } from './helpers';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -31,6 +31,7 @@ test('sign-up: apply with codes and payment -> admin approves -> customer signs 
   await next();
   // 2. details: no code box here, required fields are marked
   await expect(page.locator('.req').first()).toBeVisible();
+  await expectAccessible(page);
   await page.locator('input[name=name]').fill('Rana Test');
   await page.locator('input[name=email]').fill(email);
   await page.locator('input[name=phone]').fill(`70 ${Math.floor(100000 + Math.random() * 899999)}`);  // +961 is added for you
@@ -39,16 +40,19 @@ test('sign-up: apply with codes and payment -> admin approves -> customer signs 
   await page.locator('input[name=idn]').fill('LB998877');
   await next();
   // 3. address
+  await expectAccessible(page);
   await page.locator('input[name=city]').fill('Beirut');
   await page.locator('input[name=street]').fill('Verdun St, Bldg 9');
   await page.locator('input[name=install]').fill(install);
   await next();
   // 4. email code on its own step (the phone gets no code)
   await expect(page.getByText(`We sent a 6-digit code to ${email}`)).toBeVisible();
+  await expectAccessible(page);
   await page.getByRole('button', { name: 'Use this code' }).click();
   await page.getByRole('button', { name: 'Verify and continue' }).click();
   // 5. review and pay
   await expect(page.locator('.review')).toContainText('Verdun St, Bldg 9');
+  await expectAccessible(page);
   await page.locator('input[name=terms]').check();
   await page.getByRole('button', { name: /^Pay .* and send application$/ }).click();
   await payInDialog(page);
@@ -327,4 +331,5 @@ test('forgot password: unknown email is refused; code is checked before the new 
   await page.getByLabel('Code').fill('000000');
   await page.getByRole('button', { name: 'Continue' }).click();
   await expect(page.getByRole('alert')).toContainText('Wrong code');
+  await expectAccessible(page);
 });

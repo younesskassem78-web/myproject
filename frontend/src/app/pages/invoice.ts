@@ -48,6 +48,8 @@ import { Icon } from '../shared/icon';
             {{ p.method === 'balance' ? 'from account balance' : p.card_brand + ' ending ' + p.card_last4 }}.</p>
         }
       </article>
+    } @else if (!error()) {
+      <div class="skeleton" aria-busy="true" aria-label="Loading"></div>
     }
   `,
 })

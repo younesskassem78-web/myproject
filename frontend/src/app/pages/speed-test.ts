@@ -69,7 +69,7 @@ type Phase = 'idle' | 'ping' | 'download' | 'upload' | 'done';
             @for (r of history(); track r.id) {
               <tr><td>{{ r.created_at | date: 'd MMM, HH:mm' }}</td><td>{{ r.download_mbps | number: '1.0-1' }} Mbps</td>
                 <td>{{ r.upload_mbps | number: '1.0-1' }} Mbps</td><td>{{ r.ping_ms | number: '1.0-0' }} ms</td></tr>
-            } @empty { <tr><td colspan="4" class="muted">No tests yet. Run one above.</td></tr> }
+            } @empty { <tr><td colspan="4" class="muted">{{ loaded() ? 'No tests yet. Run one above.' : 'Loading…' }}</td></tr> }
           </tbody>
         </table>
       </div>
@@ -86,6 +86,7 @@ export class SpeedTest implements OnInit {
   up = signal<number | null>(null);
   error = signal('');
   history = signal<SpeedResult[]>([]);
+  loaded = signal(false); // lists say "Loading…", not "nothing here", until the data arrives
   planSpeed = signal<number | null>(null);
   saved = signal<SpeedResult | null>(null);
 
@@ -106,7 +107,7 @@ export class SpeedTest implements OnInit {
 
   loadHistory() {
     this.api.speedTests().subscribe({
-      next: r => { this.history.set(r.results); this.planSpeed.set(r.plan_speed_mbps); },
+      next: r => { this.history.set(r.results); this.planSpeed.set(r.plan_speed_mbps); this.loaded.set(true); },
       error: () => {},
     });
   }

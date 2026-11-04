@@ -16,6 +16,16 @@ describe('errorText', () => {
     });
   }
 
+  it("shows the server's own message even on a 502 (e.g. the email couldn't be sent)", () => {
+    expect(errorText({ status: 502, error: { detail: "We couldn't send the email. Check it and try again." } }))
+      .toBe("We couldn't send the email. Check it and try again.");
+  });
+
+  it('names the missing field instead of a bare "Field required"', () => {
+    expect(errorText({ status: 422, error: { detail: [{ loc: ['body', 'birth_date'], msg: 'Field required' }] } }))
+      .toBe('Birth date is missing.');
+  });
+
   it('falls back when there is nothing useful', () => {
     expect(errorText({ status: 500 }, 'Try later')).toBe('Try later');
   });

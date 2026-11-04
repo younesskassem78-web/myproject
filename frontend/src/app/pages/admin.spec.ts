@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { of, throwError } from 'rxjs';
+import { Subject, of, throwError } from 'rxjs';
 import { ApiService } from '../core/api.service';
 import { Admin } from './admin';
 
@@ -39,6 +39,21 @@ describe('Admin', () => {
     expect(api['approve']).toHaveBeenCalledWith('a1');
     expect(api['adminApplications']).toHaveBeenCalledTimes(2);
     expect(fixture.nativeElement.textContent).toContain('Approved Ali. We emailed them');
+  });
+
+  it('shows Approving… and locks the buttons while the approval email is sent', async () => {
+    const fixture = await setup();
+    const reply = new Subject<{ user_id: string; email_sent: boolean }>();
+    api['approve'].mockReturnValue(reply);
+    fixture.componentInstance.approve(app as any);
+    await fixture.whenStable();
+    const buttons = [...fixture.nativeElement.querySelectorAll('button')] as HTMLButtonElement[];
+    expect(buttons.find(b => b.textContent!.includes('Approving…'))).toBeTruthy();
+    expect(buttons.find(b => b.textContent!.trim() === 'Reject')!.disabled).toBe(true);
+    reply.next({ user_id: 'u2', email_sent: true });
+    reply.complete();
+    await fixture.whenStable();
+    expect(fixture.nativeElement.textContent).not.toContain('Approving…');
   });
 
   it('asks before deleting a user', async () => {

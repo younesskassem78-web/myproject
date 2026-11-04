@@ -70,6 +70,8 @@ const KIND: Record<string, string> = { invoice: 'Bill payment', topup: 'Top-up',
           @if (topUpError()) { <p class="error" role="alert">{{ topUpError() }}</p> }
         </section>
       </div>
+    } @else if (!error()) {
+      <div class="skeleton" aria-busy="true" aria-label="Loading"></div>
     }
 
     <section class="card">
@@ -91,7 +93,7 @@ const KIND: Record<string, string> = { invoice: 'Bill payment', topup: 'Top-up',
                   }
                 </td>
               </tr>
-            } @empty { <tr><td colspan="6" class="muted">No bills yet. Your first one arrives at the start of next month.</td></tr> }
+            } @empty { <tr><td colspan="6" class="muted">{{ summary() ? 'No bills yet. Your first one arrives at the start of next month.' : 'Loading…' }}</td></tr> }
           </tbody>
         </table>
       </div>
@@ -107,7 +109,7 @@ const KIND: Record<string, string> = { invoice: 'Bill payment', topup: 'Top-up',
               {{ p.method === 'autopay' ? '(autopay)' : '' }}</span></span>
             <strong>{{ p.amount | currency }}</strong>
           </li>
-        } @empty { <li class="muted">No payments yet.</li> }
+        } @empty { <li class="muted">{{ summary() ? 'No payments yet.' : 'Loading…' }}</li> }
       </ul>
     </section>
 

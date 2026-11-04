@@ -117,7 +117,7 @@ They cover every page at desktop, tablet and phone sizes and in dark mode (conte
 ## Security notes
 - Passwords: PBKDF2-SHA256, 600,000 rounds, random salt; older hashes are upgraded at the next sign-in.
 - Sessions: random 256-bit tokens stored server-side, expire after 30 days, deleted on sign-out, password change or deactivation.
-- Sign-in: 5 wrong passwords in 15 minutes locks that email for 15 minutes. Password reset by emailed 6-digit code (5 tries per code, 10-minute expiry), checked before the new password is asked for. Unknown emails get a clear "no account" message (a deliberate usability choice: it shows whether an email is a customer).
+- Sign-in: 5 wrong passwords in 15 minutes locks that email for 15 minutes. At most 10 code emails per hour from one network address (protects the email quota). Password reset by emailed 6-digit code (5 tries per code, 10-minute expiry), checked before the new password is asked for. Unknown emails get a clear "no account" message (a deliberate usability choice: it shows whether an email is a customer).
 - Every query is parameterised; every customer endpoint is scoped to the signed-in user (tested for cross-account access).
 - Security headers on the API (`nosniff`, `DENY` framing, `no-store` caching) and a strict Content-Security-Policy in nginx.
 
@@ -127,5 +127,5 @@ Interactive docs (development only): http://127.0.0.1:8001/docs
 ## Known limitations
 - Payments, data usage and network speeds are simulated; the speed test measures to the MyTerra server.
 - No general per-IP rate limiting (sign-in and code endpoints are limited).
-- Deleting a customer also deletes their bills and payments; a real operator would archive instead.
-- Outage and billing emails are sent during the request; move them to a background queue for large customer bases.
+- Notification emails (bills, payments, outages, ticket replies, receipts) go out in the background so nobody waits ~5 s per email; the queue is in memory, so a restart drops unsent ones. A jobs table with a worker is the upgrade path at larger scale.
+- Customers with bills or payments cannot be deleted (financial records are kept); deactivate them instead.

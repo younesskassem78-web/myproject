@@ -75,7 +75,7 @@ export const CATEGORY_LABEL: Record<TicketCategory, string> = {
             <p class="muted">{{ categoryLabel(t.category) }}, updated {{ t.updated_at | date: 'd MMM y, HH:mm' }}</p>
           </a>
         } @empty {
-          <p class="muted">No tickets yet. If something isn't working, tell us here.</p>
+          <p class="muted">{{ loaded() ? "No tickets yet. If something isn't working, tell us here." : 'Loading…' }}</p>
         }
       </section>
     </div>
@@ -87,6 +87,7 @@ export class Support implements OnInit {
   /** Speed test id passed from the speed test page ("Report slow speed"). */
   speed = input<string>();
   tickets = signal<Ticket[]>([]);
+  loaded = signal(false); // lists say "Loading…", not "nothing here", until the data arrives
   outages = signal<Outage[]>([]);
   latestTest = signal<SpeedResult | null>(null);
   readonly categories = Object.keys(CATEGORY_LABEL) as TicketCategory[];
@@ -105,6 +106,7 @@ export class Support implements OnInit {
     forkJoin({ t: this.api.tickets(), me: this.api.me(), s: this.api.speedTests() }).subscribe({
       next: r => {
         this.tickets.set(r.t);
+        this.loaded.set(true);
         this.outages.set(r.me.outages);
         const fromLink = r.s.results.find(x => x.id === this.speed());
         this.latestTest.set(fromLink ?? r.s.results[0] ?? null);

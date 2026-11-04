@@ -443,7 +443,7 @@ dialog.pay .two { grid-template-columns: 1fr 1fr; }
   .two { grid-template-columns: 1fr; }
   .apply-steps li:not([aria-current]) span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
   .review > div { grid-template-columns: 1fr auto; }
-  .review dd { grid-column: 1 / -1; grid-row: 2; }
+  .review dd:not(.review-edit) { grid-column: 1 / -1; grid-row: 2; }
   .inline-form .wide { grid-column: 1 / -1; }
   .msg { max-width: 100%; }
   .topup { grid-template-columns: 1fr; }

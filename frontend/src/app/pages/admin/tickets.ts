@@ -36,7 +36,7 @@ import { CATEGORY_LABEL, STATUS_LABEL } from '../support';
               <td>{{ t.updated_at | date: 'd MMM, HH:mm' }}</td>
               <td><span class="status status-{{ t.status }}">{{ statusLabel(t.status) }}</span></td>
             </tr>
-          } @empty { <tr><td colspan="5" class="muted">No tickets here.</td></tr> }
+          } @empty { <tr><td colspan="5" class="muted">{{ loaded() ? 'No tickets here.' : 'Loading…' }}</td></tr> }
         </tbody>
       </table>
     </div>
@@ -45,6 +45,7 @@ import { CATEGORY_LABEL, STATUS_LABEL } from '../support';
 export class AdminTickets implements OnInit {
   private api = inject(ApiService);
   tickets = signal<AdminTicket[]>([]);
+  loaded = signal(false); // lists say "Loading…", not "nothing here", until the data arrives
   status = signal<'' | 'active' | TicketStatus>('active');
   error = signal('');
   query = '';
@@ -64,6 +65,6 @@ export class AdminTickets implements OnInit {
   };
 
   ngOnInit() {
-    this.api.adminTickets().subscribe({ next: t => this.tickets.set(t), error: e => this.error.set(errorText(e)) });
+    this.api.adminTickets().subscribe({ next: t => { this.tickets.set(t); this.loaded.set(true); }, error: e => this.error.set(errorText(e)) });
   }
 }

@@ -8,7 +8,7 @@ def notify_user(conn, user_id, kind: str, title: str, body: str, link: str | Non
     conn.execute("insert into notifications (user_id, kind, title, body, link) values (%s, %s, %s, %s, %s)",
                  (user_id, kind, title, body, link))
     if email_to:
-        deps.send_email_quietly(email_to, title, f"{body}\n\n{deps.APP_URL}{link or '/dashboard'}\n\nMyTerra")
+        deps.send_email_later(email_to, title, f"{body}\n\n{deps.APP_URL}{link or '/dashboard'}\n\nMyTerra")
 
 
 def audit(conn, admin: dict, action: str, target: str) -> None:
