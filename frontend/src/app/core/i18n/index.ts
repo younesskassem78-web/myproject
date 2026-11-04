@@ -17,10 +17,19 @@ export const norm = (text: string) => text.replace(/\s+/g, ' ').replace(/’/g, 
 const index = (d: Record<string, string>) => Object.fromEntries(Object.entries(d).map(([k, v]) => [norm(k), v]));
 const DICTS: Record<Lang, Record<string, string>> = { en: {}, ar: index(AR), fr: index(FR) };
 
+const isLang = (v: string | null): v is Lang => v === 'en' || v === 'ar' || v === 'fr';
+
 function detect(): Lang {
+  // 1. ?lang=ar in the address (works even where the browser won't save anything; shareable)
+  const fromUrl = typeof location !== 'undefined' ? new URLSearchParams(location.search).get('lang') : null;
+  if (isLang(fromUrl)) {
+    try { localStorage.setItem(KEY, fromUrl); } catch { /* not remembered, but this page still uses it */ }
+    return fromUrl;
+  }
+  // 2. the choice saved last time  3. the browser's own language
   let saved: string | null = null;
   try { saved = localStorage.getItem(KEY); } catch { /* storage blocked: fall back to the browser */ }
-  if (saved === 'en' || saved === 'ar' || saved === 'fr') return saved;
+  if (isLang(saved)) return saved;
   const browser = (typeof navigator !== 'undefined' ? navigator.language : 'en').slice(0, 2);
   return browser === 'ar' || browser === 'fr' ? browser : 'en';
 }
@@ -35,9 +44,12 @@ export function t(text: string, params?: Record<string, string | number | null |
   return params ? out.replace(/\{(\w+)\}/g, (_, k) => String(params[k] ?? '')) : out;
 }
 
+/** Switch language: remember it and load the page again with ?lang= in the address, so it applies even if storage is blocked. */
 export function setLang(lang: Lang) {
-  try { localStorage.setItem(KEY, lang); } catch { /* the choice just won't be remembered */ }
-  location.reload();
+  try { localStorage.setItem(KEY, lang); } catch { /* the address below still carries it */ }
+  const url = new URL(location.href);
+  url.searchParams.set('lang', lang);
+  location.assign(url.toString());
 }
 
 /** Template form: {{ 'Sign in' | t }} or {{ 'Hi, {name}' | t: { name: n } }} */
