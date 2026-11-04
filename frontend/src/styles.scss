@@ -218,7 +218,6 @@ form { display: grid; gap: 1rem; }
 .home-nav a:hover, .home-signin:hover { text-decoration: underline; }
 .home-head .head-right { margin-inline-start: auto; }
 .home-head .lang-switch select { background: transparent; color: #e6f1ee; border-color: rgb(230 241 238 / 0.4); }
-.home-head .lang-switch option { color: initial; }
 .hero { background: var(--pine-deep); color: #e6f1ee; padding: clamp(3rem, 8vw, 6.5rem) clamp(1rem, 4vw, 3rem) clamp(2.5rem, 6vw, 4.5rem); }
 .hero-text { max-width: 46rem; display: grid; gap: 1.25rem; justify-items: start; }
 .hero h1 { color: #fff; font-size: clamp(2.4rem, 6vw, 4.25rem); line-height: 1.02; letter-spacing: -0.02em; }
@@ -331,9 +330,11 @@ form { display: grid; gap: 1rem; }
   .home-signin { display: none; } /* the hero has a Sign in button right below */
 }
 .lang-switch { display: inline-flex; align-items: center; gap: 0.35rem; justify-self: start; }
+/* The open list uses the page's colours, so it stays readable in light and dark mode (also under dark headers) */
+.lang-switch option { background: var(--surface); color: var(--ink); }
+@media (max-width: 480px) { .lang-switch app-icon { display: none; } } /* room for the menu on small phones */
 .lang-switch select { width: auto; padding: 0.3rem 0.5rem; font-size: 0.875rem; border-radius: 8px; }
 .apply-head .lang-switch select { background: transparent; color: #e6f1ee; border-color: rgb(230 241 238 / 0.4); }
-.apply-head .lang-switch option { color: initial; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 /* Numbers, emails and card details read left-to-right even on Arabic pages */
 .phone-input, input[type=email], input[type=tel], input[name=number], input[name=expiry], input[name=cvc], input[name=code] { direction: ltr; }
