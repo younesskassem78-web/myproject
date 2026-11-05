@@ -7,6 +7,8 @@ import { RTL, TPipe } from '../core/i18n';
 import { Plan } from '../core/models';
 import { Icon } from '../shared/icon';
 import { LangSwitch } from '../shared/lang-switch';
+import { LoadError, Skeleton } from '../shared/loading';
+import { errorText } from '../core/errors';
 
 export type Activity = 'stream4k' | 'gaming' | 'calls' | 'downloads';
 export const PEOPLE = [{ id: 'small', label: '1–2', count: 1.5 }, { id: 'medium', label: '3–4', count: 3.5 }, { id: 'large', label: '5+', count: 6 }];
@@ -39,7 +41,7 @@ const SLIDES = [
 /** The public front page: what MyTerra offers, real plans and network status, and the way in (apply / sign in). */
 @Component({
   selector: 'app-home',
-  imports: [TPipe, RouterLink, CurrencyPipe, Icon, LangSwitch],
+  imports: [TPipe, RouterLink, CurrencyPipe, Icon, LangSwitch, LoadError, Skeleton],
   template: `
     <div class="home">
       <header class="home-head">
@@ -77,7 +79,7 @@ const SLIDES = [
               </div>
             </div>
             <figure class="hero-photo">
-              <img src="home/hero.webp" width="1000" height="1100" fetchpriority="high" [alt]="'A family at home on the sofa, each on a phone or tablet' | t" />
+              <img src="home/hero.webp" width="1000" height="1100" fetchpriority="high" (error)="hideBroken($event)" [alt]="'A family at home on the sofa, each on a phone or tablet' | t" />
               @if (topSpeed()) {
                 <figcaption class="hero-chip"><strong>{{ '{n} Mbps' | t: { n: topSpeed() } }}</strong><span>{{ 'top download speed' | t }}</span></figcaption>
               }
@@ -106,7 +108,7 @@ const SLIDES = [
                (pointerup)="dragEnd()" (pointercancel)="dragEnd()" (click)="swallowClickAfterDrag($event)">
             @for (s of slides; track s.img; let i = $index) {
               <article class="slide" role="group" aria-roledescription="slide" [attr.aria-label]="'{n} of {total}' | t: { n: i + 1, total: slides.length }">
-                <img [src]="s.img" width="1200" height="800" loading="lazy" draggable="false" [alt]="s.alt | t" />
+                <img [src]="s.img" width="1200" height="800" loading="lazy" decoding="async" draggable="false" (error)="hideBroken($event)" [alt]="s.alt | t" />
                 <div class="slide-text"><h3>{{ s.title | t }}</h3><p>{{ s.text | t }}</p></div>
               </article>
             }
@@ -149,8 +151,10 @@ const SLIDES = [
                       : 'Your home could use about {gb} GB and {mbps} Mbps. This is our biggest plan; add extra data packs in busy months.')
                       | t: { gb: need().gb, mbps: need().mbps, price: (r.plan.price | currency: 'USD' : 'symbol' : '1.0-2') } }}</p>
                 <a class="btn btn-amber" routerLink="/apply" [queryParams]="{ plan: r.plan.id }">{{ 'Choose {plan}' | t: { plan: r.plan.name } }}</a>
+              } @else if (plansError()) {
+                <p>{{ plansError() }}</p>
               } @else {
-                <p class="muted">{{ 'Loading…' | t }}</p>
+                <app-skeleton />
               }
             </div>
           </div>
@@ -174,7 +178,9 @@ const SLIDES = [
                 <a class="btn" [class.btn-ghost]="p.id !== suggestion()?.plan?.id" routerLink="/apply" [queryParams]="{ plan: p.id }">{{ 'Choose this plan' | t }}</a>
               </article>
             } @empty {
-              <p class="muted">{{ (plansLoaded() ? 'No plans are available right now, so applications are closed. Please try again later.' : 'Loading…') | t }}</p>
+              @if (plansLoaded()) { <p class="muted">{{ 'No plans are available right now, so applications are closed. Please try again later.' | t }}</p>
+              } @else if (plansError()) { <app-load-error [message]="plansError()" (retry)="loadPlans()" />
+              } @else { <app-skeleton kind="rows" /> }
             }
           </div>
         </section>
@@ -243,6 +249,7 @@ export class Home implements OnInit, OnDestroy {
   ];
   plans = signal<Plan[]>([]);
   plansLoaded = signal(false);
+  plansError = signal('');
   outages = signal(0);
   readonly year = new Date().getFullYear();
 
@@ -341,8 +348,16 @@ export class Home implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.timer = setInterval(() => this.autoAdvance(), 500);
-    this.api.plans().subscribe({ next: p => { this.plans.set(p); this.plansLoaded.set(true); }, error: () => this.plansLoaded.set(true) });
+    this.loadPlans();
     this.api.status().subscribe({ next: s => this.outages.set(s.active.length), error: () => {} });
+  }
+
+  /** A photo that fails to load leaves its tinted frame and caption rather than a broken-image icon. */
+  hideBroken(e: Event) { (e.target as HTMLImageElement).style.visibility = 'hidden'; }
+
+  loadPlans() {
+    this.plansError.set('');
+    this.api.plans().subscribe({ next: p => { this.plans.set(p); this.plansLoaded.set(true); }, error: e => this.plansError.set(errorText(e)) });
   }
 
   ngOnDestroy() { clearInterval(this.timer); }

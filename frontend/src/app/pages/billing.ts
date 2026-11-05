@@ -7,6 +7,7 @@ import { Observable, forkJoin } from 'rxjs';
 import { ApiService } from '../core/api.service';
 import { errorText } from '../core/errors';
 import { BillingSummary, Invoice, Payment } from '../core/models';
+import { LoadError, Skeleton } from '../shared/loading';
 import { CardDetails, PayDialog } from './pay-dialog';
 
 type Pending = { kind: 'invoice'; invoice: Invoice } | { kind: 'topup'; amount: number } | { kind: 'autopay' };
@@ -16,12 +17,15 @@ const KIND: Record<string, string> = { invoice: 'Bill payment', topup: 'Top-up',
 
 @Component({
   selector: 'app-billing',
-  imports: [TPipe, CurrencyPipe, DatePipe, FormsModule, RouterLink, PayDialog],
+  imports: [TPipe, CurrencyPipe, DatePipe, FormsModule, RouterLink, PayDialog, LoadError, Skeleton],
   template: `
     <h1>{{ 'Billing' | t }}</h1>
     @if (notice()) { <p class="notice" role="status">{{ notice() }}</p> }
     @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
 
+    @if (loadError() && !summary()) {
+      <app-load-error [message]="loadError()" (retry)="load()" />
+    } @else {
     @if (summary(); as s) {
       <div class="bill-cards">
         <section class="panel-dark">
@@ -33,7 +37,7 @@ const KIND: Record<string, string> = { invoice: 'Bill payment', topup: 'Top-up',
             <div class="row-actions">
               <button class="btn btn-amber" type="button" (click)="payByCard(inv)">{{ 'Pay by card' | t }}</button>
               @if (s.balance >= inv.amount) {
-                <button class="btn btn-ghost-light" type="button" (click)="payFromBalance(inv)" [disabled]="busy()">
+                <button class="btn btn-ghost-light" type="button" (click)="payFromBalance(inv)" [disabled]="busy()" [class.loading]="busy() === 'balance'">
                   {{ 'Use balance' | t }}
                 </button>
               }
@@ -47,11 +51,11 @@ const KIND: Record<string, string> = { invoice: 'Bill payment', topup: 'Top-up',
           <h2>{{ 'Autopay' | t }}</h2>
           @if (s.autopay) {
             <p>{{ 'On. We charge your {brand} ending in {last4} when each bill is issued.' | t: { brand: s.card_brand, last4: s.card_last4 } }}</p>
-            <button class="btn btn-ghost" type="button" (click)="setAutopay(false)" [disabled]="busy()">{{ 'Turn off' | t }}</button>
+            <button class="btn btn-ghost" type="button" (click)="setAutopay(false)" [disabled]="busy()" [class.loading]="busy() === 'autopay'">{{ 'Turn off' | t }}</button>
           } @else {
             <p>{{ 'Never miss a due date. Bills are paid automatically with your saved card.' | t }}</p>
             @if (s.card_last4) {
-              <button class="btn" type="button" (click)="setAutopay(true)" [disabled]="busy()">
+              <button class="btn" type="button" (click)="setAutopay(true)" [disabled]="busy()" [class.loading]="busy() === 'autopay'">
                 {{ 'Turn on with {brand} {last4}' | t: { brand: s.card_brand, last4: s.card_last4 } }}
               </button>
             }
@@ -71,8 +75,8 @@ const KIND: Record<string, string> = { invoice: 'Bill payment', topup: 'Top-up',
           @if (topUpError()) { <p class="error" role="alert">{{ topUpError() }}</p> }
         </section>
       </div>
-    } @else if (!error()) {
-      <div class="skeleton" aria-busy="true" [attr.aria-label]="'Loading' | t"></div>
+    } @else {
+      <app-skeleton kind="cards" />
     }
 
     <section class="card">
@@ -94,7 +98,7 @@ const KIND: Record<string, string> = { invoice: 'Bill payment', topup: 'Top-up',
                   }
                 </td>
               </tr>
-            } @empty { <tr><td colspan="6" class="muted">{{ (summary() ? 'No bills yet. Your first one arrives at the start of next month.' : 'Loading…') | t }}</td></tr> }
+            } @empty { <tr><td colspan="6" class="muted">@if (summary()) { {{ 'No bills yet. Your first one arrives at the start of next month.' | t }} } @else { <app-skeleton kind="rows" /> }</td></tr> }
           </tbody>
         </table>
       </div>
@@ -110,9 +114,10 @@ const KIND: Record<string, string> = { invoice: 'Bill payment', topup: 'Top-up',
               {{ p.method === 'autopay' ? '(autopay)' : '' }}</span></span>
             <strong>{{ p.amount | currency }}</strong>
           </li>
-        } @empty { <li class="muted">{{ (summary() ? 'No payments yet.' : 'Loading…') | t }}</li> }
+        } @empty { <li class="muted">@if (summary()) { {{ 'No payments yet.' | t }} } @else { <app-skeleton kind="rows" /> }</li> }
       </ul>
     </section>
+    }
 
     <app-pay-dialog #payment [amount]="dialogAmount()" [description]="dialogText()" [title]="dialogTitle()"
                     [submitLabel]="dialogSubmit()" [doneLabel]="dialogDone()" [pay]="payWithCard" (paid)="afterPay()" />
@@ -125,9 +130,10 @@ export class Billing implements OnInit {
   invoices = signal<Invoice[]>([]);
   payments = signal<Payment[]>([]);
   error = signal('');
+  loadError = signal('');
   notice = signal('');
   topUpError = signal('');
-  busy = signal(false);
+  busy = signal(''); // which action is running ('balance' or 'autopay'), so only that button spins
   amount: string | number = '';
   pending = signal<Pending | null>(null);
 
@@ -143,9 +149,10 @@ export class Billing implements OnInit {
   ngOnInit() { this.load(); }
 
   load() {
+    this.loadError.set('');
     forkJoin({ s: this.api.billing(), i: this.api.invoices(), p: this.api.payments() }).subscribe({
       next: r => { this.summary.set(r.s); this.invoices.set(r.i); this.payments.set(r.p); },
-      error: e => this.error.set(errorText(e)),
+      error: e => this.loadError.set(errorText(e, t('Can’t load your bills.'))),
     });
   }
 
@@ -184,16 +191,16 @@ export class Billing implements OnInit {
     this.load();
   }
 
-  private run(action: Observable<unknown>, done: string) {
-    this.busy.set(true);
+  private run(action: Observable<unknown>, done: string, what: 'balance' | 'autopay') {
+    this.busy.set(what);
     this.error.set('');
     this.notice.set('');
     action.subscribe({
-      next: () => { this.notice.set(done); this.busy.set(false); this.load(); },
-      error: e => { this.error.set(errorText(e)); this.busy.set(false); },
+      next: () => { this.notice.set(done); this.busy.set(''); this.load(); },
+      error: e => { this.error.set(errorText(e)); this.busy.set(''); },
     });
   }
 
-  payFromBalance(inv: Invoice) { this.run(this.api.payInvoice(inv.id, 'balance'), `Paid ${inv.number} from your balance.`); }
-  setAutopay(on: boolean) { this.run(this.api.setAutopay(on), on ? 'Autopay is on.' : 'Autopay is off.'); }
+  payFromBalance(inv: Invoice) { this.run(this.api.payInvoice(inv.id, 'balance'), `Paid ${inv.number} from your balance.`, 'balance'); }
+  setAutopay(on: boolean) { this.run(this.api.setAutopay(on), on ? 'Autopay is on.' : 'Autopay is off.', 'autopay'); }
 }

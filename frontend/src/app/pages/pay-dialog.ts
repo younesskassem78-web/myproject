@@ -57,7 +57,7 @@ function luhnOk(n: string) {
             <label>{{ 'CVC' | t }} <input name="cvc" inputmode="numeric" autocomplete="cc-csc" maxlength="4" placeholder="123" [(ngModel)]="card.cvc" /></label>
           </div>
           @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
-          <button class="btn pay-btn" type="submit" [disabled]="state() !== 'idle'">
+          <button class="btn pay-btn" type="submit" [disabled]="state() !== 'idle'" [class.loading]="state() === 'processing'">
             {{ state() === 'processing' ? 'Processing…' : (submitLabel() || 'Pay ' + (amount() | currency)) }}
           </button>
           <p class="hint">{{ 'Demo checkout, nothing is charged. Test card 4242 4242 4242 4242, any future date.

@@ -5,6 +5,7 @@ import { ApiService } from '../../core/api.service';
 import { saveFile } from '../../core/download';
 import { errorText } from '../../core/errors';
 import { RevenueReport } from '../../core/models';
+import { LoadError, Skeleton } from '../../shared/loading';
 
 const KIND: Record<string, string> = {
   invoice: 'Bill payments', signup: 'First months', topup: 'Balance top-ups', data: 'Extra data',
@@ -14,7 +15,7 @@ const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart
 /** Money in, bills and new customers for any date range, straight from the database, with CSV downloads. */
 @Component({
   selector: 'app-admin-reports',
-  imports: [CurrencyPipe, FormsModule],
+  imports: [CurrencyPipe, FormsModule, LoadError, Skeleton],
   template: `
     <div class="page-head"><h1>Reports</h1></div>
     <form class="filters" (ngSubmit)="load()">
@@ -27,7 +28,7 @@ const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart
         <button class="link-btn" type="button" (click)="preset('year')">This year</button>
       </span>
     </form>
-    @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
+    @if (error()) { <app-load-error [message]="error()" (retry)="load()" /> }
 
     @if (report(); as r) {
       <div class="kpis">
@@ -73,7 +74,7 @@ const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart
         </div>
       </section>
     } @else if (!error()) {
-      <div class="skeleton" aria-busy="true" aria-label="Loading"></div>
+      <app-skeleton kind="cards" />
     }
   `,
 })

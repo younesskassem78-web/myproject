@@ -5,17 +5,18 @@ import { RouterLink } from '@angular/router';
 import { ApiService } from '../../core/api.service';
 import { errorText } from '../../core/errors';
 import { AdminTicket, TicketStatus } from '../../core/models';
+import { LoadError, Skeleton } from '../../shared/loading';
 import { CATEGORY_LABEL, STATUS_LABEL } from '../support';
 
 @Component({
   selector: 'app-admin-tickets',
-  imports: [DatePipe, FormsModule, RouterLink],
+  imports: [DatePipe, FormsModule, RouterLink, LoadError, Skeleton],
   template: `
     <div class="page-head">
       <h1>Tickets</h1>
       <input class="search" type="search" placeholder="Search subject or customer" aria-label="Search" [(ngModel)]="query" />
     </div>
-    @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
+    @if (error() && loaded()) { <p class="error" role="alert">{{ error() }}</p> }
     <div class="chips" role="group" aria-label="Filter by status">
       @for (f of filters; track f.value) {
         <button type="button" class="chip" [attr.aria-pressed]="status() === f.value" (click)="status.set(f.value)">
@@ -36,7 +37,7 @@ import { CATEGORY_LABEL, STATUS_LABEL } from '../support';
               <td>{{ t.updated_at | date: 'd MMM, HH:mm' }}</td>
               <td><span class="status status-{{ t.status }}">{{ statusLabel(t.status) }}</span></td>
             </tr>
-          } @empty { <tr><td colspan="5" class="muted">{{ loaded() ? 'No tickets here.' : 'Loading…' }}</td></tr> }
+          } @empty { <tr><td colspan="5" class="muted">@if (loaded()) { No tickets here. } @else if (error()) { <app-load-error [message]="error()" (retry)="error.set(''); load()" /> } @else { <app-skeleton kind="rows" /> }</td></tr> }
         </tbody>
       </table>
     </div>
@@ -64,7 +65,8 @@ export class AdminTickets implements OnInit {
       && (!q || [t.subject, t.user_email, t.user_name].some(f => f.toLowerCase().includes(q))));
   };
 
-  ngOnInit() {
+  ngOnInit() { this.load(); }
+  load() {
     this.api.adminTickets().subscribe({ next: t => { this.tickets.set(t); this.loaded.set(true); }, error: e => this.error.set(errorText(e)) });
   }
 }

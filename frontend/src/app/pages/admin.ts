@@ -8,6 +8,7 @@ import { errorText } from '../core/errors';
 import { ROLE_LABEL } from '../core/permissions';
 import { saveFile } from '../core/download';
 import { AdminPlan, AdminUser, Application, InstallStatus, Role } from '../core/models';
+import { LoadError, Skeleton } from '../shared/loading';
 
 type Tab = 'applications' | 'users' | 'plans';
 const TITLES: Record<Tab, string> = { applications: 'Applications', users: 'Customers', plans: 'Plans' };
@@ -26,7 +27,7 @@ const PAGE = 50;
 /** Applications, customers and plans. Which one shows comes from the route. */
 @Component({
   selector: 'app-admin',
-  imports: [FormsModule, DatePipe, CurrencyPipe],
+  imports: [FormsModule, DatePipe, CurrencyPipe, LoadError, Skeleton],
   template: `
     <div class="page-head">
       <h1>{{ title() }}</h1>
@@ -37,7 +38,7 @@ const PAGE = 50;
       }
     </div>
 
-    @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
+    @if (error() && loaded()) { <p class="error" role="alert">{{ error() }}</p> }
     @if (notice()) { <p class="notice" role="status">{{ notice() }}</p> }
 
     @switch (tab()) {
@@ -75,7 +76,7 @@ const PAGE = 50;
                     }
                   </td>
                 </tr>
-              } @empty { <tr><td colspan="6" class="muted">{{ !loaded() ? 'Loading…' : 'No applications' + (query ? ' match your search' : ' yet') + '.' }}</td></tr> }
+              } @empty { <tr><td colspan="6" class="muted">@if (loaded()) { {{ 'No applications' + (query ? ' match your search' : ' yet') + '.' }} } @else if (error()) { <app-load-error [message]="error()" (retry)="error.set(''); load()" /> } @else { <app-skeleton kind="rows" /> }</td></tr> }
             </tbody>
           </table>
         </div>
@@ -102,7 +103,9 @@ const PAGE = 50;
             </label>
             <label>City <input name="city" [(ngModel)]="newUser.city" /></label>
             <label>Balance ($) <input name="balance" inputmode="decimal" [(ngModel)]="newUser.balance" /></label>
-            <button class="btn btn-sm" type="submit">Add user</button>
+            <div class="row-actions">
+              <button class="btn btn-sm" type="submit">Add user</button>
+            </div>
           </form>
         </details>
         } @else {
@@ -153,7 +156,7 @@ const PAGE = 50;
                     }
                   </td>
                 </tr>
-              } @empty { <tr><td colspan="8" class="muted">{{ loaded() ? 'No users match your search.' : 'Loading…' }}</td></tr> }
+              } @empty { <tr><td colspan="8" class="muted">@if (loaded()) { No users match your search. } @else if (error()) { <app-load-error [message]="error()" (retry)="error.set(''); load()" /> } @else { <app-skeleton kind="rows" /> }</td></tr> }
             </tbody>
           </table>
         </div>
@@ -173,7 +176,9 @@ const PAGE = 50;
           <label>Data (GB) <input name="pgb" inputmode="numeric" [(ngModel)]="newPlan.data_gb" /></label>
           <label>Speed (Mbps) <input name="pspeed" inputmode="numeric" [(ngModel)]="newPlan.speed_mbps" /></label>
           <label>Price ($/month) <input name="pprice" inputmode="decimal" [(ngModel)]="newPlan.price" /></label>
-          <button class="btn btn-sm" type="submit">Add plan</button>
+          <div class="row-actions">
+            <button class="btn btn-sm" type="submit">Add plan</button>
+          </div>
         </form>
 
         <div class="table-wrap" tabindex="0" role="region" aria-label="Scrollable table">

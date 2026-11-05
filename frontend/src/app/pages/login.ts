@@ -27,7 +27,7 @@ import { errorText } from '../core/errors';
             <span class="hint">{{ 'Lost your phone? Enter one of your recovery codes instead.' | t }}</span>
           </label>
           @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
-          <button class="btn" type="submit" [disabled]="pending()">{{ (pending() ? 'Checking…' : 'Sign in') | t }}</button>
+          <button class="btn" type="submit" [disabled]="pending()" [class.loading]="pending()">{{ (pending() ? 'Checking…' : 'Sign in') | t }}</button>
           <button class="link-btn" type="button" (click)="startOver()">{{ 'Start again' | t }}</button>
         </form>
       } @else {
@@ -40,7 +40,7 @@ import { errorText } from '../core/errors';
           <input name="password" type="password" autocomplete="current-password" required [(ngModel)]="password" />
         </label>
         @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
-        <button class="btn" type="submit" [disabled]="pending()">{{ (pending() ? 'Signing in…' : 'Sign in') | t }}</button>
+        <button class="btn" type="submit" [disabled]="pending()" [class.loading]="pending()">{{ (pending() ? 'Signing in…' : 'Sign in') | t }}</button>
         <p class="hint"><a routerLink="/forgot">{{ 'Forgot password?' | t }}</a></p>
         <p class="hint">{{ 'New here?' | t }} <a routerLink="/apply">{{ 'Apply for an account' | t }}</a>. {{ 'Internet down?' | t }} <a routerLink="/status">{{ 'Check network status' | t }}</a>.</p>
         <p class="hint">{{ 'Demo:' | t }} <strong>demo&#64;myterra.app</strong> / <strong>demo1234</strong>.

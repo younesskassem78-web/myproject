@@ -6,17 +6,18 @@ import { ApiService } from '../core/api.service';
 import { errorText } from '../core/errors';
 import { InvoiceDetail } from '../core/models';
 import { Icon } from '../shared/icon';
+import { LoadError, Skeleton } from '../shared/loading';
 
 /** A printable bill. */
 @Component({
   selector: 'app-invoice',
-  imports: [TPipe, CurrencyPipe, DatePipe, RouterLink, Icon],
+  imports: [TPipe, CurrencyPipe, DatePipe, RouterLink, Icon, LoadError, Skeleton],
   template: `
     <div class="no-print row-actions page-actions">
       <a routerLink="/billing" class="back">{{ 'Back to billing' | t }}</a>
       <button class="btn btn-ghost" type="button" (click)="print()"><app-icon name="print" [size]="18" /> {{ 'Print or save as PDF' | t }}</button>
     </div>
-    @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
+    @if (error()) { <app-load-error [message]="error()" (retry)="load()" /> }
     @if (inv(); as i) {
       <article class="invoice card">
         <header>
@@ -50,7 +51,7 @@ import { Icon } from '../shared/icon';
         }
       </article>
     } @else if (!error()) {
-      <div class="skeleton" aria-busy="true" [attr.aria-label]="'Loading' | t"></div>
+      <app-skeleton kind="detail" />
     }
   `,
 })
@@ -60,7 +61,9 @@ export class InvoicePage implements OnInit {
   inv = signal<InvoiceDetail | null>(null);
   error = signal('');
 
-  ngOnInit() {
+  ngOnInit() { this.load(); }
+  load() {
+    this.error.set('');
     this.api.invoice(this.id()).subscribe({
       next: i => this.inv.set(i),
       error: e => this.error.set(errorText(e, t('We couldn’t find this bill.'))),

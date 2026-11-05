@@ -5,6 +5,7 @@ import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { ApiService } from '../core/api.service';
 import { errorText } from '../core/errors';
 import { Outage, OutageStatus } from '../core/models';
+import { LoadError, Skeleton } from '../shared/loading';
 
 export const OUTAGE_LABEL: Record<OutageStatus, string> = {
   investigating: 'Investigating', identified: 'Cause found, fixing', monitoring: 'Fixed, monitoring', resolved: 'Resolved',
@@ -13,14 +14,16 @@ export const OUTAGE_LABEL: Record<OutageStatus, string> = {
 /** Public page: is the network OK in my area? */
 @Component({
   selector: 'app-status',
-  imports: [TPipe, PublicHeader, DatePipe],
+  imports: [TPipe, PublicHeader, DatePipe, LoadError, Skeleton],
   template: `
     <div class="public-page">
       <app-public-header />
       <section class="status-body">
         <h1>{{ 'Network status' | t }}</h1>
-        @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
-        @if (loaded()) {
+        @if (error() && loaded()) { <p class="error" role="alert">{{ error() }}</p> }
+        @if (!loaded()) {
+          @if (error()) { <app-load-error [message]="error()" (retry)="load()" /> } @else { <app-skeleton kind="detail" /> }
+        } @else {
           @if (active().length) {
             <p class="status-summary warn">{{ (active().length === 1 ? 'One area has a known issue.' : '{n} areas have a known issue.') | t: { n: active().length } }}</p>
           } @else {

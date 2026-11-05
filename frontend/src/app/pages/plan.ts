@@ -1,14 +1,15 @@
 import { CurrencyPipe } from '@angular/common';
-import { TPipe } from '../core/i18n';
+import { TPipe, t } from '../core/i18n';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { forkJoin } from 'rxjs';
 import { ApiService } from '../core/api.service';
 import { errorText } from '../core/errors';
 import { Plan } from '../core/models';
+import { LoadError, Skeleton } from '../shared/loading';
 
 @Component({
   selector: 'app-plan',
-  imports: [TPipe, CurrencyPipe],
+  imports: [TPipe, CurrencyPipe, LoadError, Skeleton],
   template: `
     <h1>{{ 'Your plan' | t }}</h1>
     <p class="muted lead">{{ 'Switch any time. The change starts today and your next bill uses the new price.' | t }}</p>
@@ -26,11 +27,14 @@ import { Plan } from '../core/models';
             <li>{{ 'Free router and installation' | t }}</li>
           </ul>
           @if (p.id !== currentId()) {
-            <button class="btn" [class.btn-ghost]="p.price < currentPrice()" type="button" (click)="choose(p)" [disabled]="busy()">
+            <button class="btn" [class.btn-ghost]="p.price < currentPrice()" type="button" (click)="choose(p)" [disabled]="busy()" [class.loading]="picked() === p.id">
               {{ (p.price > currentPrice() ? 'Upgrade' : 'Switch') | t }} ({{ diff(p) }})
             </button>
           }
         </section>
+      } @empty {
+        @if (loadError()) { <app-load-error [message]="loadError()" (retry)="load()" />
+        } @else { @for (i of [1, 2, 3]; track i) { <app-skeleton kind="detail" /> } }
       }
     </div>
   `,
@@ -43,8 +47,12 @@ export class PlanPage implements OnInit {
   notice = signal('');
   error = signal('');
   busy = signal(false);
+  picked = signal('');
+  loadError = signal('');
 
-  ngOnInit() {
+  ngOnInit() { this.load(); }
+  load() {
+    this.loadError.set('');
     forkJoin({ plans: this.api.plans(), me: this.api.me() }).subscribe({
       next: r => {
         // A plan that's no longer sold still belongs on this page for the people on it.
@@ -53,7 +61,7 @@ export class PlanPage implements OnInit {
         this.currentId.set(r.me.plan?.id ?? null);
         this.currentPrice.set(r.me.plan?.price ?? 0);
       },
-      error: e => this.error.set(errorText(e)),
+      error: e => this.loadError.set(errorText(e, t('Can’t load the plans.'))),
     });
   }
 
@@ -65,6 +73,7 @@ export class PlanPage implements OnInit {
   choose(p: Plan) {
     if (!confirm(`Switch to ${p.name} for $${p.price.toFixed(2)} a month?`)) return;
     this.busy.set(true);
+    this.picked.set(p.id);
     this.error.set('');
     this.api.changePlan(p.id).subscribe({
       next: () => {
@@ -72,8 +81,9 @@ export class PlanPage implements OnInit {
         this.currentPrice.set(p.price);
         this.notice.set(`You're now on ${p.name}.`);
         this.busy.set(false);
+        this.picked.set('');
       },
-      error: e => { this.error.set(errorText(e)); this.busy.set(false); },
+      error: e => { this.error.set(errorText(e)); this.busy.set(false); this.picked.set(''); },
     });
   }
 }

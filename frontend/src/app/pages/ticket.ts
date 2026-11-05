@@ -7,15 +7,16 @@ import { Observable } from 'rxjs';
 import { ApiService } from '../core/api.service';
 import { errorText } from '../core/errors';
 import { TicketDetail, TicketStatus } from '../core/models';
+import { LoadError, Skeleton } from '../shared/loading';
 import { CATEGORY_LABEL, STATUS_LABEL } from './support';
 
 /** One ticket's conversation. Used by customers (/support/:id) and staff (/admin/tickets/:id). */
 @Component({
   selector: 'app-ticket',
-  imports: [TPipe, DatePipe, DecimalPipe, FormsModule, RouterLink],
+  imports: [TPipe, DatePipe, DecimalPipe, FormsModule, RouterLink, LoadError, Skeleton],
   template: `
     <a class="back" [routerLink]="staff() ? '/admin/tickets' : '/support'">{{ 'Back to tickets' | t }}</a>
-    @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
+    @if (error()) { <app-load-error [message]="error()" (retry)="load()" /> }
     @if (t(); as t) {
       <div class="ticket-page">
         <header class="ticket-title">
@@ -59,11 +60,11 @@ import { CATEGORY_LABEL, STATUS_LABEL } from './support';
             <textarea name="reply" rows="4" maxlength="2000" [(ngModel)]="reply"></textarea>
           </label>
           @if (sendError()) { <p class="error" role="alert">{{ sendError() }}</p> }
-          <button class="btn" type="submit" [disabled]="!reply.trim() || pending()">{{ (pending() ? 'Sending…' : 'Send reply') | t }}</button>
+          <button class="btn" type="submit" [disabled]="!reply.trim() || pending()" [class.loading]="pending()">{{ (pending() ? 'Sending…' : 'Send reply') | t }}</button>
         </form>
       </div>
     } @else if (!error()) {
-      <div class="skeleton" aria-busy="true" [attr.aria-label]="'Loading' | t"></div>
+      <app-skeleton kind="detail" />
     }
   `,
 })
@@ -83,6 +84,7 @@ export class TicketPage implements OnInit {
   ngOnInit() { this.load(); }
 
   load() {
+    this.error.set('');
     const req = this.staff() ? this.api.adminTicket(this.id()) : this.api.ticket(this.id());
     req.subscribe({ next: t => this.t.set(t), error: e => this.error.set(errorText(e, t('We couldn’t find this ticket.'))) });
   }

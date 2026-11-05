@@ -7,6 +7,7 @@ import { forkJoin } from 'rxjs';
 import { ApiService } from '../core/api.service';
 import { errorText } from '../core/errors';
 import { Outage, SpeedResult, Ticket, TicketCategory, TicketStatus } from '../core/models';
+import { LoadError, Skeleton } from '../shared/loading';
 
 export const STATUS_LABEL: Record<TicketStatus, string> = { open: 'Open', in_progress: 'In progress', resolved: 'Resolved' };
 export const CATEGORY_LABEL: Record<TicketCategory, string> = {
@@ -15,7 +16,7 @@ export const CATEGORY_LABEL: Record<TicketCategory, string> = {
 
 @Component({
   selector: 'app-support',
-  imports: [TPipe, FormsModule, DatePipe, DecimalPipe, RouterLink],
+  imports: [TPipe, FormsModule, DatePipe, DecimalPipe, RouterLink, LoadError, Skeleton],
   template: `
     <h1>{{ 'Support' | t }}</h1>
     <div class="support-grid">
@@ -60,10 +61,10 @@ export const CATEGORY_LABEL: Record<TicketCategory, string> = {
         </label>
         <p class="counter muted">{{ message.length }}/1000</p>
         @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
-        <button class="btn" type="submit" [disabled]="!canSend()">{{ (pending() ? 'Sending…' : 'Send ticket') | t }}</button>
+        <button class="btn" type="submit" [disabled]="!canSend()" [class.loading]="pending()">{{ (pending() ? 'Sending…' : 'Send ticket') | t }}</button>
       </form>
 
-      <section>
+      <section class="card">
         <h2>{{ 'Your tickets' | t }}</h2>
         @for (t of tickets(); track t.id) {
           <a class="ticket" [routerLink]="['/support', t.id]">
@@ -75,7 +76,9 @@ export const CATEGORY_LABEL: Record<TicketCategory, string> = {
             <p class="muted">{{ '{category}, updated {date}' | t: { category: categoryLabel(t.category), date: (t.updated_at | date: 'd MMM y, HH:mm') } }}</p>
           </a>
         } @empty {
-          <p class="muted">{{ loaded() ? "No tickets yet. If something isn't working, tell us here." : 'Loading…' }}</p>
+          @if (loaded()) { <p class="muted">{{ "No tickets yet. If something isn't working, tell us here." | t }}</p>
+          } @else if (loadError()) { <app-load-error [message]="loadError()" (retry)="load()" />
+          } @else { <app-skeleton kind="rows" /> }
         }
       </section>
     </div>
@@ -97,12 +100,15 @@ export class Support implements OnInit {
   attachTest = false;
   pending = signal(false);
   error = signal('');
+  loadError = signal('');
 
   statusLabel = (s: TicketStatus) => t(STATUS_LABEL[s]);
   categoryLabel = (c: TicketCategory) => t(CATEGORY_LABEL[c]);
   canSend = () => !!this.subject.trim() && !!this.message.trim() && !this.pending();
 
-  ngOnInit() {
+  ngOnInit() { this.load(); }
+  load() {
+    this.loadError.set('');
     forkJoin({ t: this.api.tickets(), me: this.api.me(), s: this.api.speedTests() }).subscribe({
       next: r => {
         this.tickets.set(r.t);
@@ -115,7 +121,7 @@ export class Support implements OnInit {
           this.subject = 'My internet is slower than my plan';
         }
       },
-      error: e => this.error.set(errorText(e, t('Can’t load your tickets. Refresh to try again.'))),
+      error: e => this.loadError.set(errorText(e, t('Can’t load your tickets.'))),
     });
   }
 

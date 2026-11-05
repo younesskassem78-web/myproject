@@ -192,7 +192,7 @@ export const AR: Record<string, string> = {
   'Test my speed': 'اختبر سرعتي',
   'Report a problem': 'أبلغ عن مشكلة',
   'Change plan': 'غيّر الباقة',
-  "Can't load your account. Refresh to try again.": 'تعذّر تحميل حسابك. حدّث الصفحة وحاول مجدداً.',
+  "Can't load your account.": 'تعذّر تحميل حسابك.',
   'Overdue since {date}': 'متأخرة منذ {date}',
   'Due {date}': 'تستحق في {date}',
 
@@ -288,7 +288,7 @@ export const AR: Record<string, string> = {
   'Send': 'إرسال',
   'Your tickets': 'تذاكرك',
   '{category}, updated {date}': '{category}، آخر تحديث {date}',
-  "Can't load your tickets. Refresh to try again.": 'تعذّر تحميل تذاكرك. حدّث الصفحة وحاول مجدداً.',
+  "Can't load your tickets.": 'تعذّر تحميل تذاكرك.',
   "Your ticket wasn't sent. Try again.": 'لم تُرسَل تذكرتك. حاول مجدداً.',
   'Back to tickets': 'العودة إلى التذاكر',
   '{category}, opened {date}': '{category}، فُتحت في {date}',
@@ -519,4 +519,11 @@ export const AR: Record<string, string> = {
   'A white Wi-Fi router with a network cable plugged in': 'راوتر واي فاي أبيض موصول بكابل شبكة',
   'Play slideshow': 'شغّل عرض الصور',
   'Pause slideshow': 'أوقف عرض الصور مؤقتاً',
+  // loading, errors and connection
+  'Try again': 'حاول مجدداً',
+  "Can't load your bills.": 'تعذّر تحميل فواتيرك.',
+  "Can't load the plans.": 'تعذّر تحميل الباقات.',
+  "No tickets yet. If something isn't working, tell us here.": 'لا تذاكر بعد. إن كان هناك ما لا يعمل، أخبرنا هنا.',
+  "You're offline. We'll reconnect when your internet is back.": 'أنت غير متصل. سنعاود الاتصال عند عودة الإنترنت.',
+  "You're back online.": 'عاد اتصالك بالإنترنت.',
 };

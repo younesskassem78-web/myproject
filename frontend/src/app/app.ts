@@ -2,13 +2,14 @@ import { Component, inject, signal } from '@angular/core';
 import { LangSwitch } from './shared/lang-switch';
 import { TPipe } from './core/i18n';
 import { Meta } from '@angular/platform-browser';
-import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { NavigationCancel, NavigationEnd, NavigationError, NavigationSkipped, NavigationStart, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs';
 import { AuthService } from './core/auth.service';
 import { StaffArea, canSee } from './core/permissions';
 import { ThemeService } from './core/theme.service';
 import { Icon } from './shared/icon';
 import { NotificationBell } from './shared/notification-bell';
+import { OfflineBanner } from './shared/loading';
 
 interface NavItem { path: string; label: string; icon: string; exact?: boolean; area?: StaffArea; }
 
@@ -37,8 +38,9 @@ const ADMIN_NAV: NavItem[] = [
 
 @Component({
   selector: 'app-root',
-  imports: [TPipe, LangSwitch, RouterOutlet, RouterLink, RouterLinkActive, Icon, NotificationBell],
+  imports: [TPipe, LangSwitch, RouterOutlet, RouterLink, RouterLinkActive, Icon, NotificationBell, OfflineBanner],
   template: `
+    <div class="nav-progress" [class.on]="navigating()" aria-hidden="true"></div>
     <a class="skip" href="#main">{{ 'Skip to content' | t }}</a>
     @if (showShell()) {
       <div class="shell">
@@ -95,6 +97,7 @@ const ADMIN_NAV: NavItem[] = [
     } @else {
       <main id="main" tabindex="-1"><router-outlet /></main>
     }
+    <app-offline-banner />
   `,
 })
 export class App {
@@ -103,8 +106,18 @@ export class App {
   private router = inject(Router);
   private meta = inject(Meta);
   more = signal(false);
+  navigating = signal(false);
 
   constructor() {
+    // Show the top bar only for page changes slower than 150 ms (a lazy page on a weak connection), so fast ones don't flicker.
+    let slow: ReturnType<typeof setTimeout> | undefined;
+    this.router.events.subscribe(e => {
+      if (e instanceof NavigationStart) slow = setTimeout(() => this.navigating.set(true), 150);
+      if (e instanceof NavigationEnd || e instanceof NavigationCancel || e instanceof NavigationError || e instanceof NavigationSkipped) {
+        clearTimeout(slow);
+        this.navigating.set(false);
+      }
+    });
     // Belt and braces with robots.txt: only the public pages may appear in search results.
     this.router.events.pipe(filter(e => e instanceof NavigationEnd)).subscribe(() => {
       const isPublic = PUBLIC_PAGE.test(this.router.url);

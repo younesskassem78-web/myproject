@@ -6,6 +6,7 @@ import { API, ApiService } from '../core/api.service';
 import { AuthService } from '../core/auth.service';
 import { errorText } from '../core/errors';
 import { SpeedResult } from '../core/models';
+import { LoadError, Skeleton } from '../shared/loading';
 
 /** Megabits per second for `bytes` moved in `ms` milliseconds. */
 export function mbps(bytes: number, ms: number): number {
@@ -96,7 +97,7 @@ async function uploadJob(target: Target, add: (n: number) => void, signal: Abort
 
 @Component({
   selector: 'app-speed-test',
-  imports: [TPipe, DatePipe, DecimalPipe, RouterLink],
+  imports: [TPipe, DatePipe, DecimalPipe, RouterLink, LoadError, Skeleton],
   template: `
     <h1>{{ 'Speed test' | t }}</h1>
     <p class="muted lead">{{ 'Measures your real connection (this device’s Wi-Fi or cable, plus your internet line) against the nearest
@@ -145,7 +146,9 @@ async function uploadJob(target: Target, add: (n: number) => void, signal: Abort
             @for (r of history(); track r.id) {
               <tr><td>{{ r.created_at | date: 'd MMM, HH:mm' }}@if (r.server) {<br /><span class="muted">{{ r.server | t }}</span>}</td><td>{{ r.download_mbps | number: '1.0-1' }} Mbps</td>
                 <td>{{ r.upload_mbps | number: '1.0-1' }} Mbps</td><td>{{ r.ping_ms | number: '1.0-0' }} ms</td></tr>
-            } @empty { <tr><td colspan="4" class="muted">{{ (loaded() ? 'No tests yet. Run one above.' : 'Loading…') | t }}</td></tr> }
+            } @empty { <tr><td colspan="4" class="muted">@if (loaded()) { {{ 'No tests yet. Run one above.' | t }}
+              } @else if (historyError()) { <app-load-error [message]="historyError()" (retry)="loadHistory()" />
+              } @else { <app-skeleton kind="rows" /> }</td></tr> }
           </tbody>
         </table>
       </div>
@@ -162,6 +165,7 @@ export class SpeedTest implements OnInit {
   up = signal<number | null>(null);
   error = signal('');
   history = signal<SpeedResult[]>([]);
+  historyError = signal('');
   loaded = signal(false); // lists say "Loading…", not "nothing here", until the data arrives
   planSpeed = signal<number | null>(null);
   saved = signal<SpeedResult | null>(null);
@@ -183,9 +187,10 @@ export class SpeedTest implements OnInit {
   ngOnInit() { this.loadHistory(); }
 
   loadHistory() {
+    this.historyError.set('');
     this.api.speedTests().subscribe({
       next: r => { this.history.set(r.results); this.planSpeed.set(r.plan_speed_mbps); this.loaded.set(true); },
-      error: () => {},
+      error: e => this.historyError.set(errorText(e)),
     });
   }
 

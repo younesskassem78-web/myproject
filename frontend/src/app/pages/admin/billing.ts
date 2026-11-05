@@ -4,18 +4,19 @@ import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/api.service';
 import { errorText } from '../../core/errors';
 import { AdminInvoice, Automation, InvoiceStatus } from '../../core/models';
+import { LoadError, Skeleton } from '../../shared/loading';
 
 @Component({
   selector: 'app-admin-billing',
-  imports: [CurrencyPipe, DatePipe, FormsModule],
+  imports: [CurrencyPipe, DatePipe, FormsModule, LoadError, Skeleton],
   template: `
     <div class="page-head">
       <h1>Billing</h1>
-      <button class="btn" type="button" (click)="run()" [disabled]="busy()">{{ busy() ? 'Running…' : 'Issue this month\\'s bills' }}</button>
+      <p class="muted lead">Issues one bill per active customer for this month. Customers with autopay are charged right away. Running it again only bills customers who were missed. It also reminds customers whose bill is due within 3 days.</p>
+      <button class="btn" type="button" (click)="run()" [disabled]="busy()" [class.loading]="busy()">{{ busy() ? 'Running…' : 'Issue this month\\'s bills' }}</button>
     </div>
-    <p class="muted lead">Issues one bill per active customer for this month. Customers with autopay are charged right away. Running it again only bills customers who were missed. It also reminds customers whose bill is due within 3 days.</p>
     @if (notice()) { <p class="notice" role="status">{{ notice() }}</p> }
-    @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
+    @if (error() && loaded()) { <p class="error" role="alert">{{ error() }}</p> }
 
     @if (auto(); as a) {
       <section class="card automation">
@@ -56,7 +57,7 @@ import { AdminInvoice, Automation, InvoiceStatus } from '../../core/models';
               <td>{{ i.due_date | date: 'd MMM' }}</td>
               <td><span class="status status-{{ i.status }}">{{ label(i.status) }}</span></td>
             </tr>
-          } @empty { <tr><td colspan="6" class="muted">{{ loaded() ? 'No bills match.' : 'Loading…' }}</td></tr> }
+          } @empty { <tr><td colspan="6" class="muted">@if (loaded()) { No bills match. } @else if (error()) { <app-load-error [message]="error()" (retry)="error.set(''); load()" /> } @else { <app-skeleton kind="rows" /> }</td></tr> }
         </tbody>
       </table>
     </div>

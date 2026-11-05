@@ -8,6 +8,7 @@ import { ApiService } from '../core/api.service';
 import { errorText } from '../core/errors';
 import { BillingSummary, DataPack, InstallStatus, Me, Usage } from '../core/models';
 import { Icon } from '../shared/icon';
+import { LoadError, Skeleton } from '../shared/loading';
 import { CardDetails, PayDialog } from './pay-dialog';
 import { UsageChart } from './usage-chart';
 
@@ -26,10 +27,10 @@ const INSTALL_STEPS: { key: InstallStatus; label: string }[] = [
 
 @Component({
   selector: 'app-dashboard',
-  imports: [TPipe, CurrencyPipe, DatePipe, DecimalPipe, FormsModule, RouterLink, UsageChart, Icon, PayDialog],
+  imports: [TPipe, CurrencyPipe, DatePipe, DecimalPipe, FormsModule, RouterLink, UsageChart, Icon, PayDialog, LoadError, Skeleton],
   template: `
     @if (loadError()) {
-      <p class="error" role="alert">{{ loadError() }}</p>
+      <app-load-error [message]="loadError()" (retry)="load()" />
     } @else if (me() && usage() && bill()) {
       @for (o of me()!.outages; track o.id) {
         <section class="banner banner-warn" role="status">
@@ -62,8 +63,10 @@ const INSTALL_STEPS: { key: InstallStatus; label: string }[] = [
             } @else {
               <form class="inline-form" (ngSubmit)="saveMove()">
                 <label>{{ 'New date' | t }} <input type="date" name="newDate" [min]="minDate" [max]="maxDate" [(ngModel)]="newDate" /></label>
-                <button class="btn btn-sm" type="submit" [disabled]="busy()">{{ (busy() ? 'Saving…' : 'Save') | t }}</button>
-                <button class="link-btn" type="button" (click)="moving.set(false)">{{ 'Cancel' | t }}</button>
+                <div class="row-actions">
+                  <button class="btn btn-sm" type="submit" [disabled]="busy()" [class.loading]="busy()">{{ (busy() ? 'Saving…' : 'Save') | t }}</button>
+                  <button class="link-btn" type="button" (click)="moving.set(false)">{{ 'Cancel' | t }}</button>
+                </div>
               </form>
               <p class="hint">{{ (changesLeft() === 1 ? 'You can change the date 1 more time.' : 'You can change the date {n} more times.') | t: { n: changesLeft() } }}</p>
             }
@@ -129,7 +132,7 @@ const INSTALL_STEPS: { key: InstallStatus; label: string }[] = [
         </div>
       </div>
     } @else {
-      <div class="skeleton" aria-busy="true" [attr.aria-label]="'Loading your account' | t"></div>
+      <app-skeleton kind="dashboard" label="Loading your account" />
     }
     <app-pay-dialog #packPay [amount]="chosen()?.price ?? 0" [description]="'{n} GB extra data, this month' | t: { n: chosen()?.gb ?? 0 }"
                     [title]="'Add extra data' | t" [doneLabel]="'Data added' | t" [pay]="payForPack" (paid)="afterPack()" />
@@ -208,10 +211,12 @@ export class Dashboard implements OnInit {
     this.api.usage().subscribe({ next: u => this.usage.set(u) });
   }
 
-  ngOnInit() {
+  ngOnInit() { this.load(); }
+  load() {
+    this.loadError.set('');
     forkJoin({ me: this.api.me(), usage: this.api.usage(), bill: this.api.billing() }).subscribe({
       next: r => { this.me.set(r.me); this.usage.set(r.usage); this.bill.set(r.bill); },
-      error: e => this.loadError.set(errorText(e, t('Can’t load your account. Refresh to try again.'))),
+      error: e => this.loadError.set(errorText(e, t('Can’t load your account.'))),
     });
   }
 }

@@ -6,13 +6,14 @@ import { AuthService } from '../../core/auth.service';
 import { StaffArea, canSee } from '../../core/permissions';
 import { errorText } from '../../core/errors';
 import { AdminOverview } from '../../core/models';
+import { LoadError, Skeleton } from '../../shared/loading';
 
 @Component({
   selector: 'app-admin-overview',
-  imports: [CurrencyPipe, DatePipe, RouterLink],
+  imports: [CurrencyPipe, DatePipe, RouterLink, LoadError, Skeleton],
   template: `
     <h1>Overview</h1>
-    @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
+    @if (error()) { <app-load-error [message]="error()" (retry)="load()" /> }
     @if (twoFactorOff()) {
       <section class="banner banner-warn" role="status">
         <div><strong>Protect the console</strong>
@@ -70,7 +71,7 @@ import { AdminOverview } from '../../core/models';
         }
       </div>
     } @else if (!error()) {
-      <div class="skeleton" aria-busy="true" aria-label="Loading"></div>
+      <app-skeleton kind="cards" />
     }
   `,
 })
@@ -88,7 +89,11 @@ export class AdminOverviewPage implements OnInit {
   twoFactorOff = signal(false);
 
   ngOnInit() {
-    this.api.twoFactor().subscribe({ next: s => this.twoFactorOff.set(!s.enabled), error: () => {} });
+    this.api.twoFactor().subscribe({ next: s => this.twoFactorOff.set(!s.enabled), error: () => {} }); // only a reminder; fine to skip
+    this.load();
+  }
+  load() {
+    this.error.set('');
     this.api.adminOverview().subscribe({ next: d => this.data.set(d), error: e => this.error.set(errorText(e)) });
   }
 }

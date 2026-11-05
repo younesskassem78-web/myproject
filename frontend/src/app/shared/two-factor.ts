@@ -6,11 +6,12 @@ import { ApiService } from '../core/api.service';
 import { errorText } from '../core/errors';
 import { TPipe, t } from '../core/i18n';
 import { TwoFactorStatus } from '../core/models';
+import { LoadError, Skeleton } from './loading';
 
 /** Turn two-step sign-in on (scan, confirm a code, save recovery codes) or off (password + code). */
 @Component({
   selector: 'app-two-factor',
-  imports: [DatePipe, FormsModule, TPipe],
+  imports: [DatePipe, FormsModule, TPipe, LoadError, Skeleton],
   template: `
     <section class="card two-factor">
       <h2>{{ 'Two-step sign-in' | t }}</h2>
@@ -35,8 +36,10 @@ import { TwoFactorStatus } from '../core/models';
               <label>{{ 'Code from the app' | t }}
                 <input name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" [(ngModel)]="code" />
               </label>
-              <button class="btn btn-sm" type="submit" [disabled]="busy()">{{ 'Turn on' | t }}</button>
-              <button class="link-btn" type="button" (click)="setup.set(null)">{{ 'Cancel' | t }}</button>
+              <div class="row-actions">
+                <button class="btn btn-sm" type="submit" [disabled]="busy()" [class.loading]="busy()">{{ 'Turn on' | t }}</button>
+                <button class="link-btn" type="button" (click)="setup.set(null)">{{ 'Cancel' | t }}</button>
+              </div>
             </form>
           </li>
         </ol>
@@ -50,18 +53,22 @@ import { TwoFactorStatus } from '../core/models';
             <form class="inline-form" (ngSubmit)="disable()">
               <label>{{ 'Password' | t }} <input name="password" type="password" autocomplete="current-password" [(ngModel)]="password" /></label>
               <label>{{ 'Code' | t }} <input name="offcode" inputmode="numeric" autocomplete="one-time-code" maxlength="12" [(ngModel)]="code" /></label>
-              <button class="btn btn-danger btn-sm" type="submit" [disabled]="busy()">{{ 'Turn off' | t }}</button>
-              <button class="link-btn" type="button" (click)="turningOff.set(false)">{{ 'Cancel' | t }}</button>
+              <div class="row-actions">
+                <button class="btn btn-danger btn-sm" type="submit" [disabled]="busy()" [class.loading]="busy()">{{ 'Turn off' | t }}</button>
+                <button class="link-btn" type="button" (click)="turningOff.set(false)">{{ 'Cancel' | t }}</button>
+              </div>
             </form>
           }
         } @else {
           <p>{{ 'Protect your account with a second step: after your password, enter a 6-digit code from an app on your phone.' | t }}</p>
-          <button class="btn" type="button" (click)="start()" [disabled]="busy()">{{ 'Turn on two-step sign-in' | t }}</button>
+          <button class="btn" type="button" (click)="start()" [disabled]="busy()" [class.loading]="busy()">{{ 'Turn on two-step sign-in' | t }}</button>
         }
+      } @else if (error()) {
+        <app-load-error [message]="error()" (retry)="error.set(''); load()" />
       } @else {
-        <p class="muted" aria-busy="true">{{ 'Loading…' | t }}</p>
+        <app-skeleton />
       }
-      @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
+      @if (error() && status()) { <p class="error" role="alert">{{ error() }}</p> }
     </section>
   `,
 })

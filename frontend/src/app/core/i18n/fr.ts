@@ -192,7 +192,7 @@ export const FR: Record<string, string> = {
   'Test my speed': 'Tester ma vitesse',
   'Report a problem': 'Signaler un problème',
   'Change plan': 'Changer de forfait',
-  "Can't load your account. Refresh to try again.": 'Impossible de charger votre compte. Actualisez pour réessayer.',
+  "Can't load your account.": 'Impossible de charger votre compte.',
   'Overdue since {date}': 'En retard depuis le {date}',
   'Due {date}': 'À payer avant le {date}',
 
@@ -288,7 +288,7 @@ export const FR: Record<string, string> = {
   'Send': 'Envoyer',
   'Your tickets': 'Vos tickets',
   '{category}, updated {date}': '{category}, mis à jour le {date}',
-  "Can't load your tickets. Refresh to try again.": 'Impossible de charger vos tickets. Actualisez pour réessayer.',
+  "Can't load your tickets.": 'Impossible de charger vos tickets.',
   "Your ticket wasn't sent. Try again.": 'Votre ticket n’a pas été envoyé. Réessayez.',
   'Back to tickets': 'Retour aux tickets',
   '{category}, opened {date}': '{category}, ouvert le {date}',
@@ -519,4 +519,11 @@ export const FR: Record<string, string> = {
   'A white Wi-Fi router with a network cable plugged in': 'Un routeur Wi-Fi blanc avec un câble réseau branché',
   'Play slideshow': 'Lancer le diaporama',
   'Pause slideshow': 'Mettre le diaporama en pause',
+  // loading, errors and connection
+  'Try again': 'Réessayer',
+  "Can't load your bills.": 'Impossible de charger vos factures.',
+  "Can't load the plans.": 'Impossible de charger les forfaits.',
+  "No tickets yet. If something isn't working, tell us here.": "Aucun ticket pour l'instant. Si quelque chose ne marche pas, dites-le-nous ici.",
+  "You're offline. We'll reconnect when your internet is back.": 'Vous êtes hors ligne. La connexion reprendra dès le retour d’Internet.',
+  "You're back online.": 'Vous êtes de nouveau en ligne.',
 };

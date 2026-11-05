@@ -23,6 +23,39 @@ per-page colour or size values. Dark mode works by redefining the same variables
 - **Dialogs:** native `<dialog>` (`dialog.pay`), page behind stops scrolling.
 - **Angular components:** `app-icon`, `app-lang-switch`, `app-notification-bell`, `app-two-factor-card`, `app-public-header`.
 
+## Alignment
+One rule everywhere: **things that belong together stack, left-aligned, in reading order.** Side-by-side is only for
+a set of equals (cards in a grid, buttons in an action row, columns of a table or data row).
+- **Page header** (`.page-head`): title, then its explanation, then its tools (search, main button), all on the left.
+- **Fields:** label above the field, always, filters included (`.inline-label` is the same stacked label).
+- **Forms:** fields first; the buttons together underneath in a `.row-actions` row (inside `.inline-form` it spans the full width).
+- **Cards:** heading, text, then the action button below the text (`.card p + .btn` adds the gap).
+- **Banners:** icon, message, and the link underneath the message, lined up with its text.
+- **Detail pages:** the back link on its own line, the page's actions under it.
+- **Data rows** (tables, payment history, devices, tickets) keep the value, status or row action at the end of the row,
+  in the same place on every row.
+- **Phones:** grids collapse to one column; tables keep natural column widths and scroll inside their box.
+
+## Loading, errors and weak connections
+Every section that loads data has exactly three states, never an endless spinner:
+1. **Loading:** `<app-skeleton kind="…">` (`dashboard`, `cards`, `detail`, `rows`, `lines`), built from the real layout
+   classes so nothing jumps when data arrives. Announced to screen readers as "Loading…".
+2. **Failed:** `<app-load-error [message] (retry)>`: the reason (from `errorText()`) and a **Try again** button.
+   Keep a separate `loadError` signal when the page also has action errors, so "Try again" only re-loads.
+3. **Loaded / empty:** the data, or a plain sentence saying what's missing.
+
+- **Buttons** doing work: `[disabled]="busy()" [class.loading]="busy()"`. The label stays (invisible) so the button keeps
+  its size, a spinner in the variant's colour (`--spin`) sits on top, clicks are blocked. Errors keep the form filled in.
+- **Network** (`core/resilience.ts`): reads (GET) time out after 30 s and retry twice on a dropped connection or
+  502-504, waiting 1 s then 2 s (±50 % jitter). **Writes are never retried or timed out**: a repeated payment or
+  sign-up could double-charge, and the server may still finish it.
+- **Offline:** `<app-offline-banner>` (in `App`) says when the connection drops and when it's back; pages keep what they showed.
+- **Page changes:** a thin top bar (`.nav-progress`) appears only if a page takes over 150 ms to arrive (a lazy page on a
+  slow link). It slides; it never shows a fake percentage.
+- **Images:** fixed `width`/`height`, `loading="lazy"` below the fold, a tinted frame until they arrive, hidden if broken.
+- Tested in `frontend/e2e/round4-loading.spec.ts` (slow server, server errors, dropped connection, offline, failed and
+  repeated writes, slow page change, empty and 400-row lists, 600 ms latency on every page).
+
 ## Decisions (2026-11-05 frontend review)
 - **Kept the existing look rather than redesigning.** A full audit (every route at 1366 px and 390 px, before/after
   screenshots via `frontend/scripts/shots.mjs`) found one consistent visual language already. The fixes went to

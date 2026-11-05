@@ -8,7 +8,7 @@ const PUBLIC = ['/', '/login', '/apply', '/forgot', '/status'];
 const CUSTOMER = ['/dashboard', '/billing', '/speed-test', '/support', '/plan', '/settings'];
 const ADMIN = ['/admin', '/admin/applications', '/admin/customers', '/admin/plans', '/admin/billing',
   '/admin/outages', '/admin/tickets', '/admin/reports', '/admin/audit', '/admin/account'];
-const SIZES = { desk: { width: 1366, height: 860 }, phone: { width: 390, height: 844 } };
+const SIZES = { desk: { width: 1366, height: 860 }, tablet: { width: 820, height: 1180 }, phone: { width: 390, height: 844 } };
 
 const browser = await chromium.launch({ channel: 'chrome' }); // the installed Chrome, as in playwright.config.ts
 async function signIn(page, email, password) {

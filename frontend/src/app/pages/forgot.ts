@@ -20,7 +20,7 @@ import { errorText } from '../core/errors';
               <p class="muted">{{ "Enter your account email. We'll send you a 6-digit code." | t }}</p>
               <label>{{ 'Email' | t }} <input name="email" type="email" autocomplete="email" [(ngModel)]="email" /></label>
               @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
-              <button class="btn" type="submit" [disabled]="busy()">{{ (busy() ? 'Sending…' : 'Send code') | t }}</button>
+              <button class="btn" type="submit" [disabled]="busy()" [class.loading]="busy()">{{ (busy() ? 'Sending…' : 'Send code') | t }}</button>
             </form>
           }
           @case ('code') {
@@ -29,7 +29,7 @@ import { errorText } from '../core/errors';
               <p class="muted">{{ 'We sent a 6-digit code to {email}. It expires in 10 minutes. Not there? Check your spam folder.' | t: { email: email } }}</p>
               <label>{{ 'Code' | t }} <input name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" [(ngModel)]="code" /></label>
               @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
-              <button class="btn" type="submit" [disabled]="busy()">{{ (busy() ? 'Checking…' : 'Continue') | t }}</button>
+              <button class="btn" type="submit" [disabled]="busy()" [class.loading]="busy()">{{ (busy() ? 'Checking…' : 'Continue') | t }}</button>
               <button class="link-btn" type="button" (click)="back()">{{ 'Use a different email' | t }}</button>
             </form>
           }
@@ -40,7 +40,7 @@ import { errorText } from '../core/errors';
               <label>{{ 'New password' | t }} <input name="password" type="password" autocomplete="new-password" [(ngModel)]="password" />
                 <span class="hint">{{ 'At least 8 characters.' | t }}</span></label>
               @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
-              <button class="btn" type="submit" [disabled]="busy()">{{ (busy() ? 'Saving…' : 'Set new password') | t }}</button>
+              <button class="btn" type="submit" [disabled]="busy()" [class.loading]="busy()">{{ (busy() ? 'Saving…' : 'Set new password') | t }}</button>
               <button class="link-btn" type="button" (click)="back()">{{ 'Start again' | t }}</button>
             </form>
           }

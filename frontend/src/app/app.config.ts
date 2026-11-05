@@ -5,6 +5,7 @@ import { ApplicationConfig, LOCALE_ID, provideBrowserGlobalErrorListeners } from
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { provideRouter, withComponentInputBinding, withInMemoryScrolling } from '@angular/router';
 import { authInterceptor } from './core/auth';
+import { resilienceInterceptor } from './core/resilience';
 import { routes } from './app.routes';
 import { LANG, LOCALE, RTL } from './core/i18n';
 
@@ -17,7 +18,7 @@ export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     provideRouter(routes, withInMemoryScrolling({ scrollPositionRestoration: 'enabled' }), withComponentInputBinding()),
-    provideHttpClient(withInterceptors([authInterceptor])),
+    provideHttpClient(withInterceptors([authInterceptor, resilienceInterceptor])),
     { provide: LOCALE_ID, useValue: LOCALE }, // dates and amounts follow the chosen language
   ],
 };

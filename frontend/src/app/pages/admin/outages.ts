@@ -5,16 +5,17 @@ import { Observable } from 'rxjs';
 import { ApiService } from '../../core/api.service';
 import { errorText } from '../../core/errors';
 import { Outage, OutageStatus } from '../../core/models';
+import { LoadError, Skeleton } from '../../shared/loading';
 import { OUTAGE_LABEL } from '../status';
 
 @Component({
   selector: 'app-admin-outages',
-  imports: [DatePipe, FormsModule],
+  imports: [DatePipe, FormsModule, LoadError, Skeleton],
   template: `
     <h1>Outages</h1>
     <p class="muted lead">Customers in the city get a notification and an email when you open, update or resolve an outage. It also shows on the public status page.</p>
     @if (notice()) { <p class="notice" role="status">{{ notice() }}</p> }
-    @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
+    @if (error() && loaded()) { <p class="error" role="alert">{{ error() }}</p> }
 
     <form class="card inline-form" (ngSubmit)="open()">
       <h2>Report an outage</h2>
@@ -23,7 +24,9 @@ import { OUTAGE_LABEL } from '../status';
       <label class="full">Message for customers
         <textarea name="message" rows="2" placeholder="A power cut hit our street cabinet. Engineers are on the way." [(ngModel)]="form.message"></textarea>
       </label>
-      <button class="btn btn-sm" type="submit" [disabled]="busy()">Notify customers</button>
+      <div class="row-actions">
+        <button class="btn btn-sm" type="submit" [disabled]="busy()" [class.loading]="busy()">Notify customers</button>
+      </div>
     </form>
 
     @for (o of outages(); track o.id) {
@@ -44,11 +47,13 @@ import { OUTAGE_LABEL } from '../status';
               </select>
             </label>
             <label class="wide">Update message <input [(ngModel)]="drafts[o.id].message" [name]="'m' + o.id" placeholder="Optional" /></label>
-            <button class="btn btn-sm" type="button" (click)="update(o)" [disabled]="busy()">Send update</button>
+            <div class="row-actions">
+              <button class="btn btn-sm" type="button" (click)="update(o)" [disabled]="busy()">Send update</button>
+            </div>
           </div>
         }
       </article>
-    } @empty { <p class="muted">{{ loaded() ? 'No outages recorded.' : 'Loading…' }}</p> }
+    } @empty { @if (loaded()) { <p class="muted">No outages recorded.</p> } @else if (error()) { <app-load-error [message]="error()" (retry)="error.set(''); load()" /> } @else { <app-skeleton kind="rows" /> } }
   `,
 })
 export class AdminOutages implements OnInit {
