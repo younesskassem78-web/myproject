@@ -1,10 +1,8 @@
 import { DatePipe } from '@angular/common';
-import { LangSwitch } from '../shared/lang-switch';
+import { PublicHeader } from '../shared/public-header';
 import { TPipe, t } from '../core/i18n';
 import { Component, DestroyRef, inject, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
 import { ApiService } from '../core/api.service';
-import { AuthService } from '../core/auth.service';
 import { errorText } from '../core/errors';
 import { Outage, OutageStatus } from '../core/models';
 
@@ -15,15 +13,10 @@ export const OUTAGE_LABEL: Record<OutageStatus, string> = {
 /** Public page: is the network OK in my area? */
 @Component({
   selector: 'app-status',
-  imports: [TPipe, LangSwitch, DatePipe, RouterLink],
+  imports: [TPipe, PublicHeader, DatePipe],
   template: `
     <div class="public-page">
-      <header class="apply-head">
-        <a class="wordmark" routerLink="/">myterra</a>
-        <span class="head-right"><app-lang-switch />
-        <a [routerLink]="auth.isLoggedIn() ? (auth.isStaff() ? '/admin' : '/dashboard') : '/login'">
-          {{ (auth.isLoggedIn() ? 'Back to my account' : 'Sign in') | t }}</a></span>
-      </header>
+      <app-public-header />
       <section class="status-body">
         <h1>{{ 'Network status' | t }}</h1>
         @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
@@ -57,7 +50,6 @@ export const OUTAGE_LABEL: Record<OutageStatus, string> = {
 })
 export class Status {
   private api = inject(ApiService);
-  auth = inject(AuthService);
   active = signal<Outage[]>([]);
   recent = signal<Outage[]>([]);
   loaded = signal(false);

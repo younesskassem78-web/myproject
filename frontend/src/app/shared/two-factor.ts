@@ -56,7 +56,7 @@ import { TwoFactorStatus } from '../core/models';
           }
         } @else {
           <p>{{ 'Protect your account with a second step: after your password, enter a 6-digit code from an app on your phone.' | t }}</p>
-          <button class="btn btn-sm" type="button" (click)="start()" [disabled]="busy()">{{ 'Turn on two-step sign-in' | t }}</button>
+          <button class="btn" type="button" (click)="start()" [disabled]="busy()">{{ 'Turn on two-step sign-in' | t }}</button>
         }
       } @else {
         <p class="muted" aria-busy="true">{{ 'Loading…' | t }}</p>

@@ -1,5 +1,5 @@
 import { CurrencyPipe, DatePipe } from '@angular/common';
-import { LangSwitch } from '../shared/lang-switch';
+import { PublicHeader } from '../shared/public-header';
 import { TPipe, t } from '../core/i18n';
 import { Component, OnInit, inject, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -28,13 +28,10 @@ export const STEPS: { id: Step; label: string }[] = [
 
 @Component({
   selector: 'app-apply',
-  imports: [TPipe, LangSwitch, DatePipe, FormsModule, RouterLink, CurrencyPipe, PayDialog],
+  imports: [TPipe, PublicHeader, DatePipe, FormsModule, RouterLink, CurrencyPipe, PayDialog],
   template: `
     <div class="apply">
-      <header class="apply-head">
-        <a class="wordmark" routerLink="/">myterra</a>
-        <span class="head-right"><app-lang-switch /><a routerLink="/login">{{ 'Sign in' | t }}</a></span>
-      </header>
+      <app-public-header />
 
       @if (sent()) {
         <section class="apply-done" role="status">

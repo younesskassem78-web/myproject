@@ -52,7 +52,7 @@ const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart
         <section class="card">
           <h2>By month</h2>
           @if (r.by_month.length) {
-            <ul class="bars" aria-label="Money received by month">
+            <ul class="hbars" aria-label="Money received by month">
               @for (m of r.by_month; track m.month) {
                 <li><span>{{ m.month }}</span>
                   <span class="bar" [style.width.%]="(m.total / maxMonth()) * 100"></span>

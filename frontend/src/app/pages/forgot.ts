@@ -1,5 +1,5 @@
 import { Component, inject, signal } from '@angular/core';
-import { LangSwitch } from '../shared/lang-switch';
+import { PublicHeader } from '../shared/public-header';
 import { TPipe, t } from '../core/i18n';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -8,10 +8,10 @@ import { errorText } from '../core/errors';
 
 @Component({
   selector: 'app-forgot',
-  imports: [TPipe, LangSwitch, FormsModule, RouterLink],
+  imports: [TPipe, PublicHeader, FormsModule, RouterLink],
   template: `
     <div class="public-page">
-      <header class="apply-head"><a class="wordmark" routerLink="/">myterra</a><span class="head-right"><app-lang-switch /><a routerLink="/login">{{ 'Sign in' | t }}</a></span></header>
+      <app-public-header />
       <section class="narrow card">
         @switch (step()) {
           @case ('email') {
