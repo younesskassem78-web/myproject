@@ -6,6 +6,7 @@ import { saveFile } from '../../core/download';
 import { errorText } from '../../core/errors';
 import { RevenueReport } from '../../core/models';
 import { LoadError, Skeleton } from '../../shared/loading';
+import { CountUp } from '../../shared/count-up';
 
 const KIND: Record<string, string> = {
   invoice: 'Bill payments', signup: 'First months', topup: 'Balance top-ups', data: 'Extra data',
@@ -15,7 +16,7 @@ const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart
 /** Money in, bills and new customers for any date range, straight from the database, with CSV downloads. */
 @Component({
   selector: 'app-admin-reports',
-  imports: [CurrencyPipe, FormsModule, LoadError, Skeleton],
+  imports: [CurrencyPipe, FormsModule, LoadError, Skeleton, CountUp],
   template: `
     <div class="page-head"><h1>Reports</h1></div>
     <form class="filters" (ngSubmit)="load()">
@@ -32,10 +33,10 @@ const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart
 
     @if (report(); as r) {
       <div class="kpis">
-        <div class="kpi"><span>Money received</span><strong>{{ r.received | currency }}</strong></div>
-        <div class="kpi"><span>Bills issued</span><strong>{{ r.bills.issued }}</strong><small>{{ r.bills.billed | currency }} billed</small></div>
-        <div class="kpi"><span>Still unpaid</span><strong>{{ r.bills.unpaid | currency }}</strong><small>of bills issued in this range</small></div>
-        <div class="kpi"><span>New customers</span><strong>{{ r.new_customers }}</strong></div>
+        <div class="kpi"><span>Money received</span><strong countUp>{{ r.received | currency }}</strong></div>
+        <div class="kpi"><span>Bills issued</span><strong countUp>{{ r.bills.issued }}</strong><small>{{ r.bills.billed | currency }} billed</small></div>
+        <div class="kpi"><span>Still unpaid</span><strong countUp>{{ r.bills.unpaid | currency }}</strong><small>of bills issued in this range</small></div>
+        <div class="kpi"><span>New customers</span><strong countUp>{{ r.new_customers }}</strong></div>
       </div>
 
       <div class="report-grid">

@@ -526,4 +526,7 @@ export const AR: Record<string, string> = {
   "No tickets yet. If something isn't working, tell us here.": 'لا تذاكر بعد. إن كان هناك ما لا يعمل، أخبرنا هنا.',
   "You're offline. We'll reconnect when your internet is back.": 'أنت غير متصل. سنعاود الاتصال عند عودة الإنترنت.',
   "You're back online.": 'عاد اتصالك بالإنترنت.',
+  // home promise strip
+  'Apply online in about 3 minutes': 'قدّم طلبك عبر الإنترنت في نحو 3 دقائق',
+  'Live network status': 'حالة الشبكة مباشرةً',
 };

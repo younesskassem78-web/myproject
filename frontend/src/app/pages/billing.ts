@@ -8,6 +8,7 @@ import { ApiService } from '../core/api.service';
 import { errorText } from '../core/errors';
 import { BillingSummary, Invoice, Payment } from '../core/models';
 import { LoadError, Skeleton } from '../shared/loading';
+import { CountUp } from '../shared/count-up';
 import { CardDetails, PayDialog } from './pay-dialog';
 
 type Pending = { kind: 'invoice'; invoice: Invoice } | { kind: 'topup'; amount: number } | { kind: 'autopay' };
@@ -17,7 +18,7 @@ const KIND: Record<string, string> = { invoice: 'Bill payment', topup: 'Top-up',
 
 @Component({
   selector: 'app-billing',
-  imports: [TPipe, CurrencyPipe, DatePipe, FormsModule, RouterLink, PayDialog, LoadError, Skeleton],
+  imports: [TPipe, CurrencyPipe, DatePipe, FormsModule, RouterLink, PayDialog, LoadError, Skeleton, CountUp],
   template: `
     <h1>{{ 'Billing' | t }}</h1>
     @if (notice()) { <p class="notice" role="status">{{ notice() }}</p> }
@@ -30,7 +31,7 @@ const KIND: Record<string, string> = { invoice: 'Bill payment', topup: 'Top-up',
       <div class="bill-cards">
         <section class="panel-dark">
           <h2>{{ 'Amount due' | t }}</h2>
-          <p class="balance-amount">{{ s.amount_due | currency }}</p>
+          <p class="balance-amount" countUp>{{ s.amount_due | currency }}</p>
           @if (s.amount_due > 0 && s.next_invoice; as inv) {
             <p [class.overdue-text]="inv.status === 'overdue'">{{ inv.number }}, {{ (inv.status === 'overdue' ? 'overdue since' : 'due') | t }}
               {{ inv.due_date | date: 'd MMMM' }}</p>
@@ -67,7 +68,7 @@ const KIND: Record<string, string> = { invoice: 'Bill payment', topup: 'Top-up',
 
         <section class="card">
           <h2>{{ 'Account balance' | t }}</h2>
-          <p class="big-number">{{ s.balance | currency }}</p>
+          <p class="big-number" countUp>{{ s.balance | currency }}</p>
           <form class="topup" (ngSubmit)="topUp()">
             <label>{{ 'Top up amount ($)' | t }} <input name="amount" inputmode="decimal" placeholder="10" [(ngModel)]="amount" /></label>
             <button class="btn" type="submit">{{ 'Top up' | t }}</button>

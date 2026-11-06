@@ -83,7 +83,7 @@ import { finalize } from 'rxjs';
       <section class="card">
         <h2>{{ 'Appearance' | t }}</h2>
         <p>{{ (theme.theme() === 'dark' ? 'Dark mode is on.' : 'Light mode is on.') | t }}</p>
-        <button class="btn btn-ghost" type="button" (click)="theme.toggle()">
+        <button class="btn btn-ghost" type="button" (click)="theme.toggle($event)">
           {{ (theme.theme() === 'dark' ? 'Use light mode' : 'Use dark mode') | t }}
         </button>
       </section>

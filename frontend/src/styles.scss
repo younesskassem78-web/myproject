@@ -680,3 +680,93 @@ dialog.pay .two { grid-template-columns: 1fr 1fr; }
 /* Readable timestamps inside tinted message bubbles (WCAG contrast). */
 .msg .muted { color: inherit; font-weight: 400; }
 .table-wrap:focus-visible { outline: 3px solid var(--amber); outline-offset: 2px; }
+
+/* ============ Finishing touches (2026-11-06): light, life and motion on the same design ============ */
+/* 1. Light along the fibre: faint strands, light travelling along them (hero, sign-in panel) */
+.hero, .login-brand { position: relative; overflow: hidden; }
+.hero-grid, .login-brand > :not(app-fibre-art) { position: relative; } /* content sits above the strands */
+.fibre-art { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+[dir=rtl] .fibre-art { transform: scaleX(-1); }
+.fibre-art svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.strand { fill: none; stroke: rgb(230 241 238 / 0.09); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.pulse { fill: none; stroke: var(--amber); stroke-width: 2; stroke-linecap: round; stroke-dasharray: 90 1400; stroke-dashoffset: 1490;
+  animation: travel var(--d, 6s) cubic-bezier(0.55, 0, 0.45, 1) var(--delay, 0s) infinite; }
+@keyframes travel { to { stroke-dashoffset: 0; } }
+
+/* 2. Live pulse: real status dots breathe (home status pill, status page summary) */
+@keyframes live { from { box-shadow: 0 0 0 0 var(--live); } to { box-shadow: 0 0 0 10px transparent; } }
+.status-pill .dot { --live: rgb(90 209 155 / 0.55); animation: live 2s ease-out infinite; }
+.status-pill.warn .dot { --live: rgb(240 173 58 / 0.6); }
+.status-summary { display: flex; align-items: center; gap: 0.75rem; }
+.status-summary::before { content: ''; flex: none; width: 0.65rem; height: 0.65rem; border-radius: 50%; background: currentColor;
+  --live: color-mix(in srgb, currentColor 45%, transparent); animation: live 2s ease-out infinite; }
+
+/* 3. Numbers that count up: see shared/count-up.ts (no styles needed) */
+
+/* 4. Light around the recommended plan: an amber segment runs around its border */
+@property --beam { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
+.home-plan.best::before {
+  content: ''; position: absolute; inset: -2px; padding: 2px; border-radius: calc(var(--radius) + 2px); pointer-events: none;
+  background: conic-gradient(from var(--beam), transparent 0deg 290deg, var(--amber) 335deg, transparent 360deg);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude;
+  animation: beam 4s linear infinite;
+}
+@keyframes beam { to { --beam: 360deg; } }
+.home-plan .plan-badge { z-index: 1; }
+
+/* 5. Spotlight on cards: a soft light follows the mouse (position set in app.ts), clickable cards lift */
+.home-plan, .plan-card, .kpi { position: relative; transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1), box-shadow 0.2s, border-color 0.2s; }
+.home-plan::after, .plan-card::after, .kpi::after {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: 0; transition: opacity 0.3s;
+  background: radial-gradient(220px circle at var(--mx, 50%) var(--my, 50%), rgb(240 173 58 / 0.14), transparent 70%);
+}
+@media (hover: hover) and (pointer: fine) {
+  .home-plan:hover::after, .plan-card:hover::after, .kpi:hover::after { opacity: 1; }
+  .home-plan:hover, .plan-card:hover, a.kpi:hover { transform: translateY(-3px); box-shadow: 0 14px 30px -14px rgb(18 48 42 / 0.35); }
+}
+
+/* 6. Smooth page changes: a short cross-fade; switching theme spreads out in a circle (core/theme.service.ts) */
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: 0.2s; }
+:root.theme-switching::view-transition-old(root), :root.theme-switching::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
+:root.theme-switching::view-transition-new(root) { z-index: 1; }
+
+/* 7. Gentle scroll-in: home sections rise a few pixels as they arrive. Movement only, never hidden or faded. */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .home-section > * { animation: rise-in linear both; animation-timeline: view(); animation-range: entry 0% entry 45%; }
+  }
+}
+@keyframes rise-in { from { transform: translateY(16px); } }
+
+/* 8. Signal rings: slow rings spread from behind the hero photo, like a Wi-Fi signal */
+.hero-photo .signal { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; }
+.hero-photo .signal i { position: absolute; width: 100%; aspect-ratio: 1; border-radius: 50%; border: 1.5px solid rgb(240 173 58 / 0.55);
+  opacity: 0; animation: signal 6s cubic-bezier(0.2, 0, 0.3, 1) infinite; }
+.hero-photo .signal i:nth-child(2) { animation-delay: 2s; }
+.hero-photo .signal i:nth-child(3) { animation-delay: 4s; }
+@keyframes signal { from { transform: scale(0.55); opacity: 0.9; } to { transform: scale(1.45); opacity: 0; } }
+.hero-photo img { position: relative; } /* the photo stays above the rings */
+
+/* 9. Shine on Apply now: a glint crosses the hero's main button every few seconds */
+.btn.shine { position: relative; overflow: hidden; }
+.btn.shine::after { content: ''; position: absolute; inset: 0 auto 0 0; width: 35%; pointer-events: none;
+  background: linear-gradient(100deg, transparent, rgb(255 255 255 / 0.6), transparent);
+  transform: translateX(-150%) skewX(-20deg); animation: shine 5s ease-in-out 1.5s infinite; }
+@keyframes shine { 0%, 70% { transform: translateX(-150%) skewX(-20deg); } 100% { transform: translateX(350%) skewX(-20deg); } }
+
+/* 10. Promise strip: real promises under the home header */
+.promise-strip { list-style: none; margin: 0; padding: 0.6rem clamp(1rem, 4vw, 3rem); display: flex; flex-wrap: wrap; justify-content: center;
+  gap: 0.4rem 2rem; background: var(--surface); border-bottom: 1px solid var(--line); font-size: 0.9375rem; font-weight: 600; }
+.promise-strip li { display: inline-flex; align-items: center; gap: 0.45rem; }
+.promise-strip app-icon { color: var(--pine); }
+.promise-strip a { color: inherit; text-decoration: none; }
+.promise-strip a:hover { text-decoration: underline; }
+@media (max-width: 600px) { .promise-strip { font-size: 0.8125rem; gap: 0.3rem 1.1rem; } }
+
+/* All of it stays still for people who ask their device for less motion */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
+  .pulse, .hero-photo .signal, .home-plan.best::before, .btn.shine::after { display: none; }
+  .status-pill .dot, .status-summary::before { animation: none; }
+  .home-plan:hover, .plan-card:hover, a.kpi:hover { transform: none; }
+}

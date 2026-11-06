@@ -62,7 +62,7 @@ const ADMIN_NAV: NavItem[] = [
             <div class="topbar-actions">
               <app-lang-switch />
               @if (auth.role() === 'customer') { <app-notification-bell /> }
-              <button type="button" class="icon-btn" (click)="theme.toggle()"
+              <button type="button" class="icon-btn" (click)="theme.toggle($event)"
                       [attr.aria-label]="(theme.theme() === 'dark' ? 'Use light mode' : 'Use dark mode') | t">
                 <app-icon [name]="theme.theme() === 'dark' ? 'sun' : 'moon'" />
               </button>
@@ -109,6 +109,15 @@ export class App {
   navigating = signal(false);
 
   constructor() {
+    // Spotlight: cards that light up under the mouse read its position from two CSS variables (styles.scss)
+    document.addEventListener('pointermove', e => {
+      if (e.pointerType !== 'mouse') return;
+      const card = (e.target as Element).closest?.('.home-plan, .plan-card, .kpi') as HTMLElement | null;
+      if (!card) return;
+      const r = card.getBoundingClientRect();
+      card.style.setProperty('--mx', `${e.clientX - r.left}px`);
+      card.style.setProperty('--my', `${e.clientY - r.top}px`);
+    }, { passive: true });
     // Show the top bar only for page changes slower than 150 ms (a lazy page on a weak connection), so fast ones don't flicker.
     let slow: ReturnType<typeof setTimeout> | undefined;
     this.router.events.subscribe(e => {

@@ -7,10 +7,11 @@ import { StaffArea, canSee } from '../../core/permissions';
 import { errorText } from '../../core/errors';
 import { AdminOverview } from '../../core/models';
 import { LoadError, Skeleton } from '../../shared/loading';
+import { CountUp } from '../../shared/count-up';
 
 @Component({
   selector: 'app-admin-overview',
-  imports: [CurrencyPipe, DatePipe, RouterLink, LoadError, Skeleton],
+  imports: [CurrencyPipe, DatePipe, RouterLink, LoadError, Skeleton, CountUp],
   template: `
     <h1>Overview</h1>
     @if (error()) { <app-load-error [message]="error()" (retry)="load()" /> }
@@ -23,22 +24,22 @@ import { LoadError, Skeleton } from '../../shared/loading';
     }
     @if (data(); as d) {
       <div class="kpis">
-        <a class="kpi" routerLink="/admin/customers"><span>Active customers</span><strong>{{ d.kpis.active_customers }}</strong></a>
+        <a class="kpi" routerLink="/admin/customers"><span>Active customers</span><strong countUp>{{ d.kpis.active_customers }}</strong></a>
         @if (d.kpis.mrr !== undefined) {
-          <div class="kpi"><span>Monthly recurring revenue</span><strong>{{ d.kpis.mrr | currency: 'USD' : 'symbol' : '1.0-0' }}</strong></div>
+          <div class="kpi"><span>Monthly recurring revenue</span><strong countUp>{{ d.kpis.mrr | currency: 'USD' : 'symbol' : '1.0-0' }}</strong></div>
           <a class="kpi" routerLink="/admin/billing" [class.alert]="(d.kpis.overdue_invoices ?? 0) > 0">
-            <span>Unpaid bills</span><strong>{{ d.kpis.unpaid_total | currency: 'USD' : 'symbol' : '1.0-0' }}</strong>
+            <span>Unpaid bills</span><strong countUp>{{ d.kpis.unpaid_total | currency: 'USD' : 'symbol' : '1.0-0' }}</strong>
             @if (d.kpis.overdue_invoices) { <em>{{ d.kpis.overdue_invoices }} overdue</em> }
           </a>
         }
         @if (can('applications')) {
           <a class="kpi" routerLink="/admin/applications" [class.alert]="d.kpis.pending_applications > 0">
-            <span>Applications waiting</span><strong>{{ d.kpis.pending_applications }}</strong></a>
+            <span>Applications waiting</span><strong countUp>{{ d.kpis.pending_applications }}</strong></a>
         }
         @if (can('tickets')) {
-          <a class="kpi" routerLink="/admin/tickets"><span>Open tickets</span><strong>{{ d.kpis.open_tickets }}</strong></a>
+          <a class="kpi" routerLink="/admin/tickets"><span>Open tickets</span><strong countUp>{{ d.kpis.open_tickets }}</strong></a>
           <a class="kpi" routerLink="/admin/outages" [class.alert]="d.kpis.active_outages > 0">
-            <span>Active outages</span><strong>{{ d.kpis.active_outages }}</strong></a>
+            <span>Active outages</span><strong countUp>{{ d.kpis.active_outages }}</strong></a>
         }
       </div>
 

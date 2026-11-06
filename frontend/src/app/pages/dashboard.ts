@@ -9,6 +9,7 @@ import { errorText } from '../core/errors';
 import { BillingSummary, DataPack, InstallStatus, Me, Usage } from '../core/models';
 import { Icon } from '../shared/icon';
 import { LoadError, Skeleton } from '../shared/loading';
+import { CountUp } from '../shared/count-up';
 import { CardDetails, PayDialog } from './pay-dialog';
 import { UsageChart } from './usage-chart';
 
@@ -27,7 +28,7 @@ const INSTALL_STEPS: { key: InstallStatus; label: string }[] = [
 
 @Component({
   selector: 'app-dashboard',
-  imports: [TPipe, CurrencyPipe, DatePipe, DecimalPipe, FormsModule, RouterLink, UsageChart, Icon, PayDialog, LoadError, Skeleton],
+  imports: [TPipe, CurrencyPipe, DatePipe, DecimalPipe, FormsModule, RouterLink, UsageChart, Icon, PayDialog, LoadError, Skeleton, CountUp],
   template: `
     @if (loadError()) {
       <app-load-error [message]="loadError()" (retry)="load()" />
@@ -79,7 +80,7 @@ const INSTALL_STEPS: { key: InstallStatus; label: string }[] = [
       <section class="usage-hero">
         <p class="plan-line">{{ me()!.plan?.name }} &nbsp;/&nbsp; {{ '{n} Mbps' | t: { n: me()!.plan?.speed_mbps } }} &nbsp;/&nbsp;
           {{ me()!.plan?.price | currency: 'USD' : 'symbol' : '1.0-2' }}{{ '/month' | t }}</p>
-        <h1>{{ '{used} GB of {limit} GB used' | t: { used: (usage()!.used_gb | number: '1.2-2'), limit: usage()!.limit_gb } }}</h1>
+        <h1 countUp>{{ '{used} GB of {limit} GB used' | t: { used: (usage()!.used_gb | number: '1.2-2'), limit: usage()!.limit_gb } }}</h1>
         <div class="fiber" role="progressbar" [attr.aria-label]="'Data used this month' | t"
              [attr.aria-valuenow]="percent()" aria-valuemin="0" aria-valuemax="100">
           <div class="fiber-light" [class.full]="percent() >= 100" [style.width.%]="percent()"></div>
@@ -113,7 +114,7 @@ const INSTALL_STEPS: { key: InstallStatus; label: string }[] = [
         <div class="side-cards">
           <section class="panel-dark">
             <h2>{{ 'Amount due' | t }}</h2>
-            <p class="balance-amount">{{ bill()!.amount_due | currency }}</p>
+            <p class="balance-amount" countUp>{{ bill()!.amount_due | currency }}</p>
             @if (bill()!.amount_due > 0 && bill()!.next_invoice; as inv) {
               <p [class.overdue-text]="inv.status === 'overdue'">
                 {{ (inv.status === 'overdue' ? 'Overdue since {date}' : 'Due {date}') | t: { date: (inv.due_date | date: 'd MMMM') } }}

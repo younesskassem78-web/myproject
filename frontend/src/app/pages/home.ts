@@ -6,8 +6,10 @@ import { AuthService } from '../core/auth.service';
 import { RTL, TPipe } from '../core/i18n';
 import { Plan } from '../core/models';
 import { Icon } from '../shared/icon';
+import { FibreArt } from '../shared/fibre-art';
 import { LangSwitch } from '../shared/lang-switch';
 import { LoadError, Skeleton } from '../shared/loading';
+import { CountUp } from '../shared/count-up';
 import { errorText } from '../core/errors';
 
 export type Activity = 'stream4k' | 'gaming' | 'calls' | 'downloads';
@@ -41,7 +43,7 @@ const SLIDES = [
 /** The public front page: what MyTerra offers, real plans and network status, and the way in (apply / sign in). */
 @Component({
   selector: 'app-home',
-  imports: [TPipe, RouterLink, CurrencyPipe, Icon, LangSwitch, LoadError, Skeleton],
+  imports: [TPipe, RouterLink, CurrencyPipe, Icon, LangSwitch, LoadError, Skeleton, FibreArt, CountUp],
   template: `
     <div class="home">
       <header class="home-head">
@@ -62,9 +64,15 @@ const SLIDES = [
           }
         </span>
       </header>
+      <ul class="promise-strip">
+        <li><app-icon name="check" [size]="18" />{{ 'Free router and installation' | t }}</li>
+        <li><app-icon name="check" [size]="18" />{{ 'Apply online in about 3 minutes' | t }}</li>
+        <li><app-icon name="check" [size]="18" /><a routerLink="/status">{{ 'Live network status' | t }}</a></li>
+      </ul>
 
       <main id="main" tabindex="-1">
         <section class="hero">
+          <app-fibre-art />
           <div class="hero-grid">
             <div class="hero-text">
               <a class="status-pill" [class.warn]="outages() > 0" routerLink="/status">
@@ -74,14 +82,15 @@ const SLIDES = [
               <h1>{{ 'Fast home internet you can run from your phone.' | t }}</h1>
               <p class="hero-sub">{{ 'Fiber plans across Lebanon. Apply online in about 3 minutes, pick your installation day, then handle bills, data and support yourself.' | t }}</p>
               <div class="hero-actions">
-                <a class="btn btn-amber" routerLink="/apply">{{ 'Apply now' | t }}</a>
+                <a class="btn btn-amber shine" routerLink="/apply">{{ 'Apply now' | t }}</a>
                 <a class="btn btn-ghost-light" routerLink="/login">{{ 'Sign in' | t }}</a>
               </div>
             </div>
             <figure class="hero-photo">
+              <span class="signal" aria-hidden="true"><i></i><i></i><i></i></span>
               <img src="home/hero.webp" width="1000" height="1100" fetchpriority="high" (error)="hideBroken($event)" [alt]="'A family at home on the sofa, each on a phone or tablet' | t" />
               @if (topSpeed()) {
-                <figcaption class="hero-chip"><strong>{{ '{n} Mbps' | t: { n: topSpeed() } }}</strong><span>{{ 'top download speed' | t }}</span></figcaption>
+                <figcaption class="hero-chip"><strong countUp>{{ '{n} Mbps' | t: { n: topSpeed() } }}</strong><span>{{ 'top download speed' | t }}</span></figcaption>
               }
             </figure>
           </div>

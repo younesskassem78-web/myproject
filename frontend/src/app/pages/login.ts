@@ -2,6 +2,7 @@ import { Component, inject, signal } from '@angular/core';
 import { TPipe, t } from '../core/i18n';
 import { Role } from '../core/models';
 import { LangSwitch } from '../shared/lang-switch';
+import { FibreArt } from '../shared/fibre-art';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../core/auth.service';
@@ -9,10 +10,11 @@ import { errorText } from '../core/errors';
 
 @Component({
   selector: 'app-login',
-  imports: [TPipe, LangSwitch, FormsModule, RouterLink],
+  imports: [TPipe, LangSwitch, FormsModule, RouterLink, FibreArt],
   template: `
     <div class="login">
       <section class="login-brand">
+        <app-fibre-art />
         <a class="wordmark" routerLink="/">myterra</a>
         <h1>{{ 'Your home internet, in one place.' | t }}</h1>
         <p>{{ 'Check your plan, watch your data, top up and get help without calling anyone.' | t }}</p>

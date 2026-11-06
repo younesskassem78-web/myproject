@@ -526,4 +526,7 @@ export const FR: Record<string, string> = {
   "No tickets yet. If something isn't working, tell us here.": "Aucun ticket pour l'instant. Si quelque chose ne marche pas, dites-le-nous ici.",
   "You're offline. We'll reconnect when your internet is back.": 'Vous êtes hors ligne. La connexion reprendra dès le retour d’Internet.',
   "You're back online.": 'Vous êtes de nouveau en ligne.',
+  // home promise strip
+  'Apply online in about 3 minutes': 'Demande en ligne en 3 minutes environ',
+  'Live network status': 'État du réseau en direct',
 };
